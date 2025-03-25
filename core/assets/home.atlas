@@ -1,0 +1,11 @@
+home.png
+size:1028,799
+repeat:none
+CreateGame
+bounds:145,2,141,35
+JoinGame
+bounds:2,2,141,35
+godfather
+bounds:2,39,1024,758
+settings
+bounds:288,22,15,15

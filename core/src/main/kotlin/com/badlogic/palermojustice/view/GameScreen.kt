@@ -2,65 +2,60 @@ package com.badlogic.palermojustice.view
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Screen
-import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.g2d.BitmapFont
+import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.scenes.scene2d.Stage
-import com.badlogic.gdx.scenes.scene2d.ui.*
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
+import com.badlogic.gdx.scenes.scene2d.ui.Image
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton
+import com.badlogic.gdx.scenes.scene2d.ui.Table
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable
 import com.badlogic.gdx.utils.viewport.ScreenViewport
-import com.badlogic.gdx.scenes.scene2d.InputEvent
 
 class GameScreen : Screen {
     private val stage = Stage(ScreenViewport())
-    private lateinit var font: BitmapFont
-    private lateinit var labelStyle: Label.LabelStyle
-    private lateinit var buttonStyle: TextButton.TextButtonStyle
+    private lateinit var atlas: TextureAtlas
 
     override fun show() {
         Gdx.input.inputProcessor = stage
-//
-        font = BitmapFont()
-        font.data.setScale(3f)
 
-        labelStyle = Label.LabelStyle().apply {
-            font = this@GameScreen.font
-            fontColor = Color.WHITE
-        }
+        // 🔹 Carica l'Atlas
+        atlas = TextureAtlas(Gdx.files.internal("home.atlas"))
 
-        buttonStyle = TextButton.TextButtonStyle().apply {
-            font = this@GameScreen.font
-            fontColor = Color.WHITE
-        }
+        // 🔹 Immagine principale (Godfather)
+        val godfatherImage = Image(atlas.findRegion("godfather"))
 
-        val titleLabel = Label("Palermo Justice", labelStyle)
-        val createGameButton = TextButton("Create Game", buttonStyle)
-        val joinGameButton = TextButton("Join Game", buttonStyle)
+        // 🔹 Bottoni
+        val createGameButton = ImageButton(TextureRegionDrawable(atlas.findRegion("CreateGame")))
+        val joinGameButton = ImageButton(TextureRegionDrawable(atlas.findRegion("JoinGame")))
+        val settingsButton = ImageButton(TextureRegionDrawable(atlas.findRegion("settings")))
 
-        createGameButton.addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                println("Create Game Clicked!")
-            }
-        })
+        // 🔹 Creiamo la Table principale per centrare tutto
+        val mainTable = Table()
+        mainTable.debug = true  // Mostra i bordi della table per debug
+        mainTable.setFillParent(true)  // Fa occupare alla Table tutto lo schermo
+        mainTable.center()             // Centra tutti gli elementi
 
-        joinGameButton.addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                println("Join Game Clicked!")
-            }
-        })
+        // 🔹 Aggiungiamo gli elementi alla Table principale
+        mainTable.add(godfatherImage).width(300f).height(250f).padBottom(50f).row()
+        mainTable.add(createGameButton).width(300f).height(100f).padBottom(20f).row()
+        mainTable.add(joinGameButton).width(300f).height(100f).padBottom(20f).row()
 
-        val table = Table()
-        table.setFillParent(true)
-        table.add(titleLabel).padBottom(80f).row()
-        table.add(createGameButton).width(350f).height(120f).padBottom(40f).row()
-        table.add(joinGameButton).width(350f).height(120f)
+        // 🔹 Aggiunta del bottone delle impostazioni in alto a destra
+        val settingsTable = Table()
+        settingsTable.setFillParent(true)
+        settingsTable.top().right()
+        settingsTable.add(settingsButton).pad(20f)
 
-        stage.addActor(table)
+        // 🔹 Aggiunta di entrambe le table allo stage
+        stage.addActor(mainTable)
+        stage.addActor(settingsTable)
     }
 
     override fun render(delta: Float) {
+        Gdx.gl.glClearColor(1f, 1f, 1f, 1f) // Sfondo bianco
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
-        stage.act(delta)
+
+        stage.act(Math.min(Gdx.graphics.deltaTime, 1 / 30f))
         stage.draw()
     }
 
@@ -74,6 +69,6 @@ class GameScreen : Screen {
 
     override fun dispose() {
         stage.dispose()
-        font.dispose()
+        atlas.dispose()
     }
 }
