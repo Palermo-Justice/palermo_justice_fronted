@@ -83,14 +83,13 @@ class CreateGameScreen : Screen {
         createButton.pad(10f)
         createButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // Logica per creare il gioco
+                // Game logic
                 val gameName = gameNameField.text
                 val playerCount = playerCountSelectBox.selected.toInt()
                 val playerName = playerNameField.text
 
-                // Qui puoi implementare la logica per creare il gioco
-                // Per ora, torniamo semplicemente alla home screen
-                Main.instance.setScreen(HomeScreen())
+
+                Main.instance.setScreen(LobbyScreen())
             }
         })
 

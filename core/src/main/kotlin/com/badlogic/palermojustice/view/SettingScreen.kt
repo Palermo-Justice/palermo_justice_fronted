@@ -48,8 +48,8 @@ class SettingsScreen : Screen {
         stage.addActor(table)
 
         // Create UI elements
-        val titleLabel = Label("Settings", skin)
-        var backButton = TextButton("Back", skin)
+        val titleLabel = Label("SETTINGS", skin)
+        var backButton = TextButton("BACK", skin)
 
         languageSelectBox = SelectBox(skin)
         languageSelectBox.setItems(*Language.values())
@@ -61,7 +61,7 @@ class SettingsScreen : Screen {
 //            }
 //        })
 
-        darkModeCheckBox = CheckBox("Dark Mode", skin)
+        darkModeCheckBox = CheckBox("DARK MODE", skin)
 //        darkModeCheckBox.isChecked = SettingsManager.settings.isDarkMode
 //        darkModeCheckBox.addListener(object : ChangeListener() {
 //            override fun changed(event: ChangeEvent, actor: Actor) {
@@ -79,7 +79,7 @@ class SettingsScreen : Screen {
 
         // Add UI elements to the table
         table.add(titleLabel).padBottom(50f).row()
-        table.add(Label("Language", skin)).left().row()
+        table.add(Label("LANGUAGE", skin)).left().row()
         table.add(languageSelectBox).padBottom(20f).fillX().row()
         table.add(darkModeCheckBox).padBottom(20f).left().row()
         table.add(backButton)

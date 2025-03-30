@@ -33,11 +33,11 @@ class RolesScreen : Screen {
 
         // header table
         val headerTable = Table()
-        val titleLabel = Label("Game Roles", skin, "title")
+        val titleLabel = Label("GAME ROLES", skin, "title")
         titleLabel.setAlignment(Align.center)
 
         // back button
-        val backButton = TextButton("Back", skin)
+        val backButton = TextButton("BACK", skin)
         backButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
                 Main.instance.setScreen(HomeScreen())

@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.Texture
+import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
@@ -17,10 +18,10 @@ class HomeScreen : Screen {
     private lateinit var skin: Skin
 
     override fun show() {
-
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
+        //val atlas = TextureAtlas(Gdx.files.internal("pj2.atlas"))
         skin = Skin(Gdx.files.internal("comic-ui.json"))
 
         createUI()
@@ -34,71 +35,66 @@ class HomeScreen : Screen {
 
         // title table
         val headerTable = Table()
-        val titleLabel = Label("Palermo Justice", skin, "title")
-        titleLabel.setAlignment(Align.left)
+        val titleLabel = Label("PALERMO JUSTICE", skin, "title")
+        titleLabel.setAlignment(Align.center)
 
-        headerTable.add(titleLabel).expandX().align(Align.left)
+        headerTable.add(titleLabel).expandX().align(Align.center)
+        titleLabel.setFontScale(2f)
 
-        // try-catch to handle assets errors
-        try {
-            val fileHandle = Gdx.files.internal("godfather.jpg")
-            Gdx.app.log("DEBUG", "File exists: " + fileHandle.exists())
-            Gdx.app.log("DEBUG", "File path: " + fileHandle.file().absolutePath)
+        val fileHandle = Gdx.files.internal("godfather.jpg")
+        val godfatherTexture = Texture(fileHandle)
+        val godfatherImage = Image(godfatherTexture)
 
-            val godfatherTexture = Texture(fileHandle)
-            val godfatherImage = Image(godfatherTexture)
-        } catch (e: Exception) {
-            Gdx.app.error("ERROR", "Exception loading image", e)
-            val placeholder = Label("Il Padrino", skin)
+        // main buttons
+        val createGameButton = TextButton("CREATE GAME", skin)
+        createGameButton.addListener(object : ChangeListener() {
+            override fun changed(event: ChangeEvent, actor: Actor) {
+                Main.instance.setScreen(CreateGameScreen())
+            }
+        })
 
+        val joinGameButton = TextButton("JOIN GAME", skin)
+        joinGameButton.addListener(object : ChangeListener() {
+            override fun changed(event: ChangeEvent, actor: Actor) {
+                Main.instance.setScreen(JoinGameScreen())
+            }
+        })
 
-            // main buttons
-            val createGameButton = TextButton("Create Game", skin)
-            createGameButton.addListener(object : ChangeListener() {
-                override fun changed(event: ChangeEvent, actor: Actor) {
-                    Main.instance.setScreen(CreateGameScreen())
-                }
-            })
+        //bottom table for roles and settings
+        val bottomTable = Table()
+        val rolesButton = TextButton("ROLES", skin)
+        rolesButton.addListener(object : ChangeListener() {
+            override fun changed(event: ChangeEvent, actor: Actor) {
+                Main.instance.setScreen(RolesScreen())
+            }
+        })
 
-            val joinGameButton = TextButton("Join Game", skin)
-            joinGameButton.addListener(object : ChangeListener() {
-                override fun changed(event: ChangeEvent, actor: Actor) {
-                    Main.instance.setScreen(JoinGameScreen())
-                }
-            })
+        val settingsButtonBottom = TextButton("SETTINGS", skin)
+        settingsButtonBottom.addListener(object : ChangeListener() {
+            override fun changed(event: ChangeEvent, actor: Actor) {
+                Main.instance.setScreen(SettingsScreen())
+            }
+        })
 
-            //bottom table for roles and settings
-            val bottomTable = Table()
-            val rolesButton = TextButton("Roles", skin)
-            rolesButton.addListener(object : ChangeListener() {
-                override fun changed(event: ChangeEvent, actor: Actor) {
-                    Main.instance.setScreen(RolesScreen())
-                }
-            })
+        bottomTable.add(rolesButton).width(450f).height(150f).padRight(30f)
+        bottomTable.add(settingsButtonBottom).width(450f).height(150f)
 
-            val settingsButtonBottom = TextButton("Settings", skin)
-            settingsButtonBottom.addListener(object : ChangeListener() {
-                override fun changed(event: ChangeEvent, actor: Actor) {
-                    Main.instance.setScreen(SettingsScreen())
-                }
-            })
+        //put all elements in the main table
+        mainTable.add(headerTable).fillX().padTop(10f).row()
+        mainTable.add(godfatherImage).size(300f, 300f).padTop(30f).row()
 
-            bottomTable.add(rolesButton).padRight(20f)
-            bottomTable.add(settingsButtonBottom)
+        val subtitleLabel = Label("THE GODFATHER", skin)
+        mainTable.add(subtitleLabel).padTop(20f).row()
 
-            //put all elements in the main table
-            mainTable.add(headerTable).fillX().padTop(10f).row()
-            mainTable.add(placeholder).size(200f, 200f).padTop(20f).row()
-            mainTable.add(createGameButton).width(250f).height(60f).padTop(30f).row()
-            mainTable.add(joinGameButton).width(250f).height(60f).padTop(20f).row()
-            mainTable.add(bottomTable).padTop(40f).padBottom(20f).row()
+        mainTable.add(createGameButton).width(650f).height(150f).padTop(50f).row()
+        mainTable.add(joinGameButton).width(650f).height(150f).padTop(30f).row()
+        mainTable.add(bottomTable).padTop(50f).padBottom(40f).row()
 
-            //style and aspect
-            createGameButton.pad(20f)
-            joinGameButton.pad(20f)
-            rolesButton.pad(20f)
-            settingsButtonBottom.pad(20f)
-        }
+        //style and aspect
+        createGameButton.pad(15f)
+        joinGameButton.pad(15f)
+        rolesButton.pad(15f)
+        settingsButtonBottom.pad(15f)
     }
 
     override fun render(delta: Float) {

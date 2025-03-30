@@ -34,13 +34,13 @@ class JoinGameScreen : Screen {
         stage.addActor(mainTable)
 
         // title
-        val titleLabel = Label("Join Game", skin, "title")
+        val titleLabel = Label("JOIN GAME", skin, "title")
         titleLabel.setAlignment(Align.center)
         mainTable.add(titleLabel).expandX().center().padBottom(50f).row()
 
         // Name field table
         val nameTable = Table()
-        val nameLabel = Label("Name", skin)
+        val nameLabel = Label("NAME", skin)
         nameLabel.setFontScale(1.2f)
         nameTable.add(nameLabel).width(100f).padRight(10f)
 
@@ -51,7 +51,7 @@ class JoinGameScreen : Screen {
 
         // Code field table
         val codeTable = Table()
-        val codeLabel = Label("Code", skin)
+        val codeLabel = Label("CODE", skin)
         codeLabel.setFontScale(1.2f)
         codeTable.add(codeLabel).width(100f).padRight(10f)
 
@@ -63,7 +63,7 @@ class JoinGameScreen : Screen {
         // bottom buttons
         val buttonsTable = Table()
 
-        val backButton = TextButton("Back", skin)
+        val backButton = TextButton("BACK", skin)
         backButton.pad(10f)
         backButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
@@ -71,7 +71,7 @@ class JoinGameScreen : Screen {
             }
         })
 
-        val joinButton = TextButton("Join", skin)
+        val joinButton = TextButton("JOIN", skin)
         joinButton.pad(10f)
         joinButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
