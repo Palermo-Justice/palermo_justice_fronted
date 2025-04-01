@@ -20,7 +20,7 @@ class RolesScreen : Screen {
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
-        skin = Skin(Gdx.files.internal("comic-ui.json"))
+        skin = Skin(Gdx.files.internal("pj2.json"))
 
         createUI()
     }
@@ -54,11 +54,11 @@ class RolesScreen : Screen {
         scrollPane.setScrollingDisabled(true, false)
 
         // add roles to the roles table
-        addRole(rolesTable, "Mafioso", "A member of the mafia. Works with other mafiosi to eliminate citizens each night. Wins when mafia outnumbers citizens.", "mafioso.jpg")
-        addRole(rolesTable, "Cittadino", "A regular citizen trying to survive. Votes during the day to eliminate suspected mafiosi. Wins when all mafiosi are eliminated.", "citizen.jpg")
-        addRole(rolesTable, "Detective", "A citizen with the ability to investigate one player each night to determine if they are a mafioso. Wins with the citizens.", "detective.jpg")
-        addRole(rolesTable, "Medico", "A citizen with the ability to protect one player each night from being eliminated. Cannot protect the same player in consecutive nights. Wins with the citizens.", "doctor.jpg")
-        addRole(rolesTable, "Capo Mafia", "Leader of the mafia. If the mafia cannot reach a decision on who to eliminate, the Capo Mafia's choice prevails. Wins with the mafia.", "godfather.jpg")
+        addRole(rolesTable, "Mafioso", "A member of the mafia. Works with other mafiosi to eliminate citizens each night. Wins when mafia outnumbers citizens.", "godfather.jpg")
+        addRole(rolesTable, "Paesano", "A regular citizen trying to survive. Votes during the day to eliminate suspected mafiosi. Wins when all mafiosi are eliminated.", "citizen.jpg")
+        addRole(rolesTable, "Ispettore", "A citizen with the ability to investigate one player each night to determine if they are a mafioso. Wins with the citizens.", "detective.jpg")
+        addRole(rolesTable, "Sgarrista", "A citizen with the ability to protect one player each night from being eliminated. Cannot protect the same player in consecutive nights. Wins with the citizens.", "nnnn.jpg")
+        addRole(rolesTable, "Il Prete", "A citizen with the ability to protect one player each night from being eliminated. Cannot protect the same player in consecutive nights. Wins with the citizens.", "doctor.jpg")
 
         // put all elements in the main table
         mainTable.add(headerTable).fillX().padTop(10f).padBottom(20f).row()
@@ -71,7 +71,7 @@ class RolesScreen : Screen {
     private fun addRole(table: Table, roleName: String, roleDescription: String, imagePath: String) {
         val roleTable = Table()
         roleTable.pad(10f)
-        roleTable.background = skin.getDrawable("button")
+        roleTable.background = skin.getDrawable("button_1_normal")
 
         // Role image
         try {

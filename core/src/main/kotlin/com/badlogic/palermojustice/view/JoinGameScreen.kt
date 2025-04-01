@@ -21,7 +21,7 @@ class JoinGameScreen : Screen {
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
-        skin = Skin(Gdx.files.internal("comic-ui.json"))
+        skin = Skin(Gdx.files.internal("pj2.json"))
 
         createUI()
     }

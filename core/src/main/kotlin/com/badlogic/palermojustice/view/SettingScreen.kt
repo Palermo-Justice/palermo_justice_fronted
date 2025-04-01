@@ -35,7 +35,7 @@ class SettingsScreen : Screen {
 
         // Load assets (you can use AssetManager for more complex resource management)
         font = BitmapFont()
-        skin = Skin(Gdx.files.internal("comic-ui.json"))
+        skin = Skin(Gdx.files.internal("pj2.json"))
 
         // Create UI elements
         createUI()

@@ -24,7 +24,7 @@ class CreateGameScreen : Screen {
         Gdx.input.inputProcessor = stage
 
         // Carica lo skin
-        skin = Skin(Gdx.files.internal("comic-ui.json"))
+        skin = Skin(Gdx.files.internal("pj2.json"))
 
         // Crea l'interfaccia utente
         createUI()
