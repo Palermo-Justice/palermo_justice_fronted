@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.scenes.scene2d.Stage
@@ -73,13 +74,30 @@ class LobbyScreen : Screen {
         playersTextFields = mutableListOf()
         val numberOfPlayers = 7 // to support dynamic number in future
         val dummyNames = listOf("Bari", "Niklas", "Panta", "Gaute", "Moritz", "Markus", "Justin") // dummy player names for now
+        val playerNameStyle = TextField.TextFieldStyle().apply {
+            font = this@LobbyScreen.font
+            fontColor = Color.BLACK
+            font.data.setScale(3f)
 
+            val pixmap = Pixmap(1, 1, Pixmap.Format.RGBA8888).apply {
+                setColor(Color.WHITE)
+                fill()
+            }
+            val blackDrawable = TextureRegionDrawable(TextureRegion(Texture(pixmap)))
+            pixmap.dispose()
+
+            background = blackDrawable
+            background.setLeftWidth(10f)
+            background.setRightWidth(10f)
+            background.setTopHeight(10f)
+            background.setBottomHeight(10f)
+        }
         // Player fields vertically
         val playersTable = Table()
         playersTable.defaults().pad(10f).width(450f).height(100f)
         for (i in 0 until numberOfPlayers) {
             val nameForPlayer = if (i < dummyNames.size) dummyNames[i] else "Player ${i + 1}"
-            val textField = TextField(nameForPlayer, textFieldStyle)
+            val textField = TextField(nameForPlayer, playerNameStyle)
             playersTextFields.add(textField)
             playersTable.add(textField).row()
         }
