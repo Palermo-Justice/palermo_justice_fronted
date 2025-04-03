@@ -1,13 +1,16 @@
 package com.badlogic.palermojustice
 
 import com.badlogic.gdx.Game
-import com.badlogic.palermojustice.view.GameScreen
-import com.badlogic.palermojustice.view.SettingsScreen
+import com.badlogic.palermojustice.view.HomeScreen
 
 class Main : Game() {
-    override fun create() {
-        setScreen(SettingsScreen()) // Start GameScreen for the main screen
+    companion object {
+        lateinit var instance: Main
+            private set
+    }
 
+    override fun create() {
+        instance = this
+        setScreen(HomeScreen()) // Start GameScreen for the main screen
     }
 }
-//

@@ -67,7 +67,11 @@ com.badlogic.gdx.scenes.scene2d.ui.ImageButton$ImageButtonStyle: {
 		up: button
 		down: button-pressed
 		over: button-highlighted
-	}
+	},
+  custom: {
+    up: button_1
+    down: button_1_pressed
+  }
 }
 com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle: {
 	default: {
@@ -176,7 +180,14 @@ com.badlogic.gdx.scenes.scene2d.ui.TextButton$TextButtonStyle: {
 		up: button
 		down: button-pressed
 		over: button-highlighted
-	}
+	},
+    custom: {
+        font: button
+        fontColor: black
+        up: button_1_pressed
+        down: button_1_pressed
+        over: button_1_pressed
+    }
 }
 com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle: {
 	default: {

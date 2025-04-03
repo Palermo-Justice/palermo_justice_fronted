@@ -10,6 +10,8 @@ import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.viewport.ScreenViewport
+import com.badlogic.palermojustice.Main
+
 //import com.badlogic.palermojustice.SettingsManager
 
 enum class Language(val code: String) {
@@ -33,7 +35,7 @@ class SettingsScreen : Screen {
 
         // Load assets (you can use AssetManager for more complex resource management)
         font = BitmapFont()
-        skin = Skin(Gdx.files.internal("comic-ui.json"))
+        skin = Skin(Gdx.files.internal("pj2.json"))
 
         // Create UI elements
         createUI()
@@ -46,8 +48,8 @@ class SettingsScreen : Screen {
         stage.addActor(table)
 
         // Create UI elements
-        val titleLabel = Label("Settings", skin)
-        var backButton = TextButton("Back", skin)
+        val titleLabel = Label("SETTINGS", skin)
+        var backButton = TextButton("BACK", skin)
 
         languageSelectBox = SelectBox(skin)
         languageSelectBox.setItems(*Language.values())
@@ -59,7 +61,7 @@ class SettingsScreen : Screen {
 //            }
 //        })
 
-        darkModeCheckBox = CheckBox("Dark Mode", skin)
+        darkModeCheckBox = CheckBox("DARK MODE", skin)
 //        darkModeCheckBox.isChecked = SettingsManager.settings.isDarkMode
 //        darkModeCheckBox.addListener(object : ChangeListener() {
 //            override fun changed(event: ChangeEvent, actor: Actor) {
@@ -68,12 +70,19 @@ class SettingsScreen : Screen {
 //            }
 //        })
 
+        //When pressed, backButton (go back) redirects to home screen
+        backButton.addListener(object : ChangeListener() {
+            override fun changed(event: ChangeEvent, actor: Actor) {
+                Main.instance.setScreen(HomeScreen())
+            }
+        })
+
         // Add UI elements to the table
         table.add(titleLabel).padBottom(50f).row()
-        table.add(Label("Language", skin)).left().row()
-        table.add(languageSelectBox).padBottom(20f).fillX().row()
+        //table.add(Label("LANGUAGE", skin)).left().row()
+        //table.add(languageSelectBox).padBottom(20f).fillX().row()
         table.add(darkModeCheckBox).padBottom(20f).left().row()
-        table.add(backButton)
+        table.add(backButton).size(450f, 150f).padBottom(100f).row()
     }
 
     override fun render(delta: Float) {
