@@ -54,7 +54,7 @@ class RolesScreen : Screen {
 
         // add roles to the roles table
         addRole(rolesTable, "Mafioso", "A member of the mafia. Works with other mafiosi to eliminate citizens each night. Wins when mafia outnumbers citizens.", "godfather.jpg")
-        addRole(rolesTable, "Paesano", "A regular citizen trying to survive. Votes during the day to eliminate suspected mafiosi. Wins when all mafiosi are eliminated.", "citizen.jpg")
+        addRole(rolesTable, "Paesano", "A regular player with no special abilities (from the italian slang it means \"Villager\n" + "or citizen of a country city\")", "citizen.jpg")
         addRole(rolesTable, "Ispettore", "A citizen with the ability to investigate one player each night to determine if they are a mafioso. Wins with the citizens.", "detective.jpg")
         addRole(rolesTable, "Sgarrista", "A citizen with the ability to protect one player each night from being eliminated. Cannot protect the same player in consecutive nights. Wins with the citizens.", "nnnn.jpg")
         addRole(rolesTable, "Il Prete", "A citizen with the ability to protect one player each night from being eliminated. Cannot protect the same player in consecutive nights. Wins with the citizens.", "doctor.jpg")

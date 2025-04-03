@@ -44,7 +44,6 @@ class LobbyScreen : Screen {
             }
         })
 
-        headerTable.add(backButton).padRight(20f).align(Align.left)
         headerTable.add(titleLabel).expandX().align(Align.center)
 
         val codeLabel = Label("Code", skin, "title")
@@ -81,6 +80,7 @@ class LobbyScreen : Screen {
         mainTable.add(playerNameField).fillX().height(50f).padBottom(50f).row()
         mainTable.add(playerNameField2).fillX().height(50f).padBottom(50f).row()
         mainTable.add(buttonsTable).fillX()
+        mainTable.add(backButton).width(450f).height(150f).padRight(0f)
 
         // style adjustment
         backButton.pad(10f)

@@ -9,6 +9,9 @@
     title: {
       file: font-title-export.fnt
     }
+    custom: {
+      file: our_font.fnt
+    }
   }
   com.badlogic.gdx.graphics.Color: {
     black: {
@@ -58,7 +61,7 @@
     radio: {
       checkboxOn: radio-on
       checkboxOff: radio
-      font: button
+      font: custom
       fontColor: black
     }
   }
@@ -89,7 +92,11 @@
       fontColor: black
     }
     title: {
-      font: title
+      font: custom
+      fontColor: white
+    }
+    sub-title: {
+      font: custom
       fontColor: white
     }
     alt: {
@@ -163,6 +170,14 @@
       listStyle: select-box-big
       backgroundOpen: select-box-big-open
     }
+    custom: {
+      font: button
+      fontColor: black
+      background: select-box-big
+      scrollStyle: default
+      listStyle: select-box-big
+      backgroundOpen: select-box-big-open
+    }
   }
   com.badlogic.gdx.scenes.scene2d.ui.Slider$SliderStyle: {
     default-horizontal: {
@@ -192,7 +207,7 @@
   }
   com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle: {
     default: {
-      font: font
+      font: custom
       fontColor: black
       background: text-field
       cursor: cursor
@@ -200,7 +215,7 @@
       messageFontColor: gray
     },
     custom: {
-      font: font
+      font: custom
       fontColor: black
       background: roles_box
       cursor: cursor

@@ -35,40 +35,44 @@ class CreateGameScreen : Screen {
         stage.addActor(mainTable)
 
         // Title
-        val titleLabel = Label("Create Game", skin, "title")
+        val titleLabel = Label("CREATE GAME", skin, "title")
         titleLabel.setFontScale(3f)
         mainTable.add(titleLabel).left().padBottom(30f).row()
 
         // Game name field
-        val gameNameLabel = Label("Game name", skin)
-        gameNameLabel.setFontScale(5f)
+        val gameNameLabel = Label("GAME NAME", skin, "sub-title")
+        gameNameLabel.setFontScale(2f)
         mainTable.add(gameNameLabel).left().padBottom(10f).row()
 
         gameNameField = TextField("", skin, "custom")
-        mainTable.add(gameNameField).fillX().size(540f, 150f).padBottom(30f).row()
+        gameNameField.style.font.data.setScale(1.5f)
+        gameNameField.style.background.leftWidth = 20f
+        mainTable.add(gameNameField).fillX().height(100f).padBottom(30f).row()
 
         // Select players number
-        val playerCountLabel = Label("Choose number of players", skin)
-        playerCountLabel.setFontScale(1.2f)
+        val playerCountLabel = Label("CHOOSE NUMBER OF PLAYERS", skin, "sub-title")
+        playerCountLabel.setFontScale(2f)
         mainTable.add(playerCountLabel).left().padBottom(10f).row()
 
-        playerCountSelectBox = SelectBox<String>(skin)
+        playerCountSelectBox = SelectBox<String>(skin, "custom")
         playerCountSelectBox.setItems("3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
         playerCountSelectBox.selected = "5"
         mainTable.add(playerCountSelectBox).left().width(100f).height(50f).padBottom(30f).row()
 
         // Player name field
-        val playerNameLabel = Label("My player name", skin)
-        playerNameLabel.setFontScale(1.2f)
+        val playerNameLabel = Label("MY PLAYER NAME", skin, "sub-title")
+        playerNameLabel.setFontScale(2f)
         mainTable.add(playerNameLabel).left().padBottom(10f).row()
 
-        playerNameField = TextField("", skin)
-        mainTable.add(playerNameField).fillX().height(50f).padBottom(50f).row()
+        playerNameField = TextField("", skin, "custom")
+        playerNameField.style.font.data.setScale(1.5f)
+        playerNameField.style.background.leftWidth = 20f
+        mainTable.add(playerNameField).fillX().height(100f).padBottom(50f).row()
 
         // Lower buttons
         val buttonsTable = Table()
 
-        val backButton = TextButton("Back", skin)
+        val backButton = TextButton("BACK", skin)
         backButton.pad(10f)
         backButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
@@ -76,7 +80,7 @@ class CreateGameScreen : Screen {
             }
         })
 
-        val createButton = TextButton("Create", skin)
+        val createButton = TextButton("CREATE", skin)
         createButton.pad(10f)
         createButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
@@ -90,8 +94,8 @@ class CreateGameScreen : Screen {
             }
         })
 
-        buttonsTable.add(backButton).width(150f).padRight(20f)
-        buttonsTable.add(createButton).width(150f)
+        buttonsTable.add(backButton).width(450f).height(150f).padRight(0f).row()
+        buttonsTable.add(createButton).width(450f).height(150f).row()
 
         mainTable.add(buttonsTable).fillX()
     }

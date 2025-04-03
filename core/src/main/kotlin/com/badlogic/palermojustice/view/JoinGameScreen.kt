@@ -35,27 +35,28 @@ class JoinGameScreen : Screen {
 
         // title
         val titleLabel = Label("JOIN GAME", skin, "title")
+        titleLabel.setFontScale(3f)
         titleLabel.setAlignment(Align.center)
         mainTable.add(titleLabel).expandX().center().padBottom(50f).row()
 
         // Name field table
         val nameTable = Table()
-        val nameLabel = Label("NAME", skin)
+        val nameLabel = Label("NAME", skin, "sub-title")
         nameLabel.setFontScale(1.2f)
         nameTable.add(nameLabel).width(100f).padRight(10f)
 
-        nameField = TextField("", skin)
+        nameField = TextField("", skin, "custom")
         nameTable.add(nameField).fillX().height(50f)
 
         mainTable.add(nameTable).fillX().padBottom(30f).row()
 
         // Code field table
         val codeTable = Table()
-        val codeLabel = Label("CODE", skin)
+        val codeLabel = Label("CODE", skin, "sub-title")
         codeLabel.setFontScale(1.2f)
         codeTable.add(codeLabel).width(100f).padRight(10f)
 
-        codeField = TextField("", skin)
+        codeField = TextField("", skin, "custom")
         codeTable.add(codeField).fillX().height(50f)
 
         mainTable.add(codeTable).fillX().padBottom(50f).row()
@@ -84,8 +85,8 @@ class JoinGameScreen : Screen {
             }
         })
 
-        buttonsTable.add(backButton).width(150f).padRight(20f)
-        buttonsTable.add(joinButton).width(150f)
+        buttonsTable.add(backButton).size(450f, 150f).row()
+        buttonsTable.add(joinButton).size(450f, 150f).row()
 
         mainTable.add(buttonsTable).fillX()
     }

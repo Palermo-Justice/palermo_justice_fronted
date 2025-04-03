@@ -48,7 +48,8 @@ class SettingsScreen : Screen {
         stage.addActor(table)
 
         // Create UI elements
-        val titleLabel = Label("SETTINGS", skin)
+        val titleLabel = Label("SETTINGS", skin, "title")
+        titleLabel.setFontScale(2f)
         var backButton = TextButton("BACK", skin)
 
         languageSelectBox = SelectBox(skin)
@@ -81,7 +82,7 @@ class SettingsScreen : Screen {
         table.add(titleLabel).padBottom(50f).row()
         //table.add(Label("LANGUAGE", skin)).left().row()
         //table.add(languageSelectBox).padBottom(20f).fillX().row()
-        table.add(darkModeCheckBox).padBottom(20f).left().row()
+        table.add(darkModeCheckBox).padBottom(200f).left().row()
         table.add(backButton).size(450f, 150f).padBottom(100f).row()
     }
 
