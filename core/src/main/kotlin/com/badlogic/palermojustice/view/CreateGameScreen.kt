@@ -94,8 +94,8 @@ class CreateGameScreen : Screen {
             }
         })
 
-        buttonsTable.add(backButton).width(450f).height(150f).padRight(0f).row()
-        buttonsTable.add(createButton).width(450f).height(150f).row()
+        buttonsTable.add(backButton).width(450f).height(150f).padRight(0f)
+        buttonsTable.add(createButton).width(450f).height(150f)
 
         mainTable.add(buttonsTable).fillX()
     }

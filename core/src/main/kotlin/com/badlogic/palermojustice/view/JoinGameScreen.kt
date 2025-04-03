@@ -80,13 +80,13 @@ class JoinGameScreen : Screen {
                 val playerName = nameField.text
                 val gameCode = codeField.text
 
-                // TODO
-                Main.instance.setScreen(HomeScreen())
+                // TODO Use the code to connect to the game server
+                Main.instance.setScreen(LobbyScreen())
             }
         })
 
-        buttonsTable.add(backButton).size(450f, 150f).row()
-        buttonsTable.add(joinButton).size(450f, 150f).row()
+        buttonsTable.add(backButton).size(450f, 150f)
+        buttonsTable.add(joinButton).size(450f, 150f)
 
         mainTable.add(buttonsTable).fillX()
     }

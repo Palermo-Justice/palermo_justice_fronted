@@ -34,6 +34,7 @@ class LobbyScreen : Screen {
         // header table
         val headerTable = Table()
         val titleLabel = Label("GAME NAME", skin, "title")
+        titleLabel.setFontScale(3f)
         titleLabel.setAlignment(Align.center)
 
         // back button
@@ -46,7 +47,9 @@ class LobbyScreen : Screen {
 
         headerTable.add(titleLabel).expandX().align(Align.center)
 
+        //TODO the code must be dynamic
         val codeLabel = Label("Code", skin, "title")
+        codeLabel.setFontScale(2f)
         //TODO Players will be added in a loop (add as many players as joined the game)
         val playerNameField = TextField("Player 1", skin)
         val playerNameField2 = TextField("Player 2", skin)
@@ -71,19 +74,16 @@ class LobbyScreen : Screen {
             }
         })
 
-        buttonsTable.add(rolesButton).width(150f).padRight(20f)
-        buttonsTable.add(startButton).width(150f)
+        buttonsTable.add(rolesButton).size(450f, 150f).padRight(20f)
+        buttonsTable.add(startButton).size(450f, 150f)
 
         // put all elements in the main table
         mainTable.add(headerTable).fillX().padTop(10f).padBottom(20f).row()
         mainTable.add(codeLabel).fillX().padTop(10f).padBottom(20f).row()
-        mainTable.add(playerNameField).fillX().height(50f).padBottom(50f).row()
-        mainTable.add(playerNameField2).fillX().height(50f).padBottom(50f).row()
-        mainTable.add(buttonsTable).fillX()
-        mainTable.add(backButton).width(450f).height(150f).padRight(0f)
-
-        // style adjustment
-        backButton.pad(10f)
+        mainTable.add(playerNameField).size(450f, 150f).padBottom(50f).row()
+        mainTable.add(playerNameField2).size(450f, 150f).padBottom(50f).row()
+        mainTable.add(buttonsTable).fillX().padBottom(200f).row()
+        mainTable.add(backButton).width(450f).height(150f)
     }
 
     override fun render(delta: Float) {
