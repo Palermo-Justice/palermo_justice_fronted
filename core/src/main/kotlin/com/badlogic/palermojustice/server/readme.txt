@@ -1,4 +1,4 @@
-Main APIs toamange for the backend:
+Main APIs to manage for the backend:
 Creation of a new lobby
 Access to a lobby using code
 Join a lobby
