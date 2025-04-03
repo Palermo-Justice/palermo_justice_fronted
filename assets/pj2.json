@@ -50,8 +50,8 @@
   }
   com.badlogic.gdx.scenes.scene2d.ui.CheckBox$CheckBoxStyle: {
     default: {
-      checkboxOn: checkbox-on
-      checkboxOff: checkbox
+      checkboxOn: checkbox_on_px
+      checkboxOff: checkbox_px
       font: button
       fontColor: black
     }
@@ -67,6 +67,11 @@
       up: button_px_normal
       down: button_px_pressed
       over: button_px_pressed
+    },
+    custom: {
+      up: roles_box
+      down: roles_box
+      over: roles_box
     }
   }
   com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle: {
@@ -190,6 +195,14 @@
       font: font
       fontColor: black
       background: text-field
+      cursor: cursor
+      selection: cyan
+      messageFontColor: gray
+    },
+    custom: {
+      font: font
+      fontColor: black
+      background: roles_box
       cursor: cursor
       selection: cyan
       messageFontColor: gray

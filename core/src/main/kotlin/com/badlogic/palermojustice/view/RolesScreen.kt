@@ -44,7 +44,6 @@ class RolesScreen : Screen {
             }
         })
 
-        headerTable.add(backButton).padRight(20f).align(Align.left)
         headerTable.add(titleLabel).expandX().align(Align.center)
 
         // scrollable roles container
@@ -61,17 +60,15 @@ class RolesScreen : Screen {
         addRole(rolesTable, "Il Prete", "A citizen with the ability to protect one player each night from being eliminated. Cannot protect the same player in consecutive nights. Wins with the citizens.", "doctor.jpg")
 
         // put all elements in the main table
-        mainTable.add(headerTable).fillX().padTop(10f).padBottom(20f).row()
-        mainTable.add(scrollPane).expand().fill().pad(20f).row()
-
-        // style adjustment
-        backButton.pad(10f)
+        mainTable.add(headerTable).fillX().padTop(10f).padBottom(10f).row()
+        mainTable.add(scrollPane).expand().fill().padBottom(50f).padLeft(5f).padRight(5f).row()
+        mainTable.add(backButton).size(450f, 150f).padBottom(100f).center().row()
     }
 
     private fun addRole(table: Table, roleName: String, roleDescription: String, imagePath: String) {
         val roleTable = Table()
         roleTable.pad(10f)
-        roleTable.background = skin.getDrawable("button_1_normal")
+        roleTable.background = skin.getDrawable("roles_box")
 
         // Role image
         try {
@@ -81,8 +78,8 @@ class RolesScreen : Screen {
                 val roleImage = Image(roleTexture)
                 roleTable.add(roleImage).size(100f, 100f).padRight(20f)
             } else {
-                val placeholderLabel = Label("No Image", skin)
-                roleTable.add(placeholderLabel).size(100f, 100f).padRight(20f)
+                val placeholderLabel = Label("", skin)
+                roleTable.add(placeholderLabel).size(100f, 100f).padRight(10f)
             }
         } catch (e: Exception) {
             Gdx.app.error("ERROR", "Exception loading role image: $imagePath", e)
@@ -93,7 +90,9 @@ class RolesScreen : Screen {
         // Role information
         val infoTable = Table()
         val nameLabel = Label(roleName, skin, "title")
+        nameLabel.style.font.data.setScale(1.3f)
         val descriptionLabel = Label(roleDescription, skin)
+        descriptionLabel.style.font.data.setScale(2f)
         descriptionLabel.setWrap(true)
 
         infoTable.add(nameLabel).fillX().padBottom(10f).row()

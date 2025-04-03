@@ -19,37 +19,35 @@ class CreateGameScreen : Screen {
     private lateinit var playerCountSelectBox: SelectBox<String>
 
     override fun show() {
-        // Inizializza lo stage
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
-        // Carica lo skin
         skin = Skin(Gdx.files.internal("pj2.json"))
 
-        // Crea l'interfaccia utente
         createUI()
     }
 
     private fun createUI() {
-        // Table principale
+        // Main table
         val mainTable = Table()
         mainTable.setFillParent(true)
         mainTable.top().padTop(20f).padLeft(20f).padRight(20f)
         stage.addActor(mainTable)
 
-        // Titolo
+        // Title
         val titleLabel = Label("Create Game", skin, "title")
+        titleLabel.setFontScale(3f)
         mainTable.add(titleLabel).left().padBottom(30f).row()
 
-        // Campo nome del gioco
+        // Game name field
         val gameNameLabel = Label("Game name", skin)
-        gameNameLabel.setFontScale(1.2f)
+        gameNameLabel.setFontScale(5f)
         mainTable.add(gameNameLabel).left().padBottom(10f).row()
 
-        gameNameField = TextField("", skin)
-        mainTable.add(gameNameField).fillX().height(50f).padBottom(30f).row()
+        gameNameField = TextField("", skin, "custom")
+        mainTable.add(gameNameField).fillX().size(540f, 150f).padBottom(30f).row()
 
-        // Selezione numero giocatori
+        // Select players number
         val playerCountLabel = Label("Choose number of players", skin)
         playerCountLabel.setFontScale(1.2f)
         mainTable.add(playerCountLabel).left().padBottom(10f).row()
@@ -59,7 +57,7 @@ class CreateGameScreen : Screen {
         playerCountSelectBox.selected = "5"
         mainTable.add(playerCountSelectBox).left().width(100f).height(50f).padBottom(30f).row()
 
-        // Campo nome del giocatore
+        // Player name field
         val playerNameLabel = Label("My player name", skin)
         playerNameLabel.setFontScale(1.2f)
         mainTable.add(playerNameLabel).left().padBottom(10f).row()
@@ -67,14 +65,13 @@ class CreateGameScreen : Screen {
         playerNameField = TextField("", skin)
         mainTable.add(playerNameField).fillX().height(50f).padBottom(50f).row()
 
-        // Pulsanti in basso
+        // Lower buttons
         val buttonsTable = Table()
 
         val backButton = TextButton("Back", skin)
         backButton.pad(10f)
         backButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // Torna alla schermata home
                 Main.instance.setScreen(HomeScreen())
             }
         })
@@ -100,11 +97,9 @@ class CreateGameScreen : Screen {
     }
 
     override fun render(delta: Float) {
-        // Pulisci lo schermo
         Gdx.gl.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
-        // Aggiorna e disegna lo stage
         stage.act(delta)
         stage.draw()
     }

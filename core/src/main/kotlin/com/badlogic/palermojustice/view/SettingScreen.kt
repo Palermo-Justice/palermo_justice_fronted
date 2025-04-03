@@ -79,10 +79,10 @@ class SettingsScreen : Screen {
 
         // Add UI elements to the table
         table.add(titleLabel).padBottom(50f).row()
-        table.add(Label("LANGUAGE", skin)).left().row()
-        table.add(languageSelectBox).padBottom(20f).fillX().row()
+        //table.add(Label("LANGUAGE", skin)).left().row()
+        //table.add(languageSelectBox).padBottom(20f).fillX().row()
         table.add(darkModeCheckBox).padBottom(20f).left().row()
-        table.add(backButton)
+        table.add(backButton).size(450f, 150f).padBottom(100f).row()
     }
 
     override fun render(delta: Float) {
