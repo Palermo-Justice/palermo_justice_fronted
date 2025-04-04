@@ -11,6 +11,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
+import com.badlogic.palermojustice.model.GameModel
 
 class GameScreen : Screen {
     private lateinit var stage: Stage
@@ -62,5 +63,17 @@ class GameScreen : Screen {
     override fun dispose() {
         stage.dispose()
         skin.dispose()
+    }
+
+    fun updatePhaseDisplay(night: Any) {
+        //TODO
+    }
+
+    fun updateDisplay() {
+        TODO("Not yet implemented")
+    }
+
+    fun showRoleAssignment(role: GameModel) {
+        //TODO implement and maybe correct role: GameModel should be something else (like Role)
     }
 }
