@@ -5,6 +5,7 @@ import com.badlogic.palermojustice.model.GameModel
 import com.badlogic.palermojustice.model.GameState
 import com.badlogic.palermojustice.model.Player
 import com.badlogic.palermojustice.model.Role
+import java.util.concurrent.ConcurrentHashMap
 
 enum class MessageType {
     JOIN_ROOM,
@@ -13,7 +14,8 @@ enum class MessageType {
     PLAYER_ACTION,
     GAME_STATE_UPDATE,
     VOTE,
-    ROLE_ASSIGNMENT
+    ROLE_ASSIGNMENT,
+    CHAT_MESSAGE  // Added for the tests
 }
 
 data class GameMessage(
@@ -22,8 +24,11 @@ data class GameMessage(
 )
 
 class MessageHandler {
-    private val json = Json()
+    val json = Json()
     private val gameController = GameController.getInstance()
+
+    // callback datastructure
+    private val callbacks = ConcurrentHashMap<MessageType, MutableList<(GameMessage) -> Unit>>()
 
     fun encodeMessage(type: MessageType, payload: Any): ByteArray {
         val message = GameMessage(type, payload)
@@ -47,10 +52,29 @@ class MessageHandler {
                 val role = json.fromJson(Role::class.java, json.toJson(message.payload))
                 gameController.assignRole(role)
             }
-            // Manage other messages if needed
             else -> {
-                // Manage exceptions
+                // TODO manage exceptions
             }
         }
+
+        callbacks[message.type]?.forEach { callback ->
+            callback(message)
+        }
+    }
+
+    fun registerCallback(type: MessageType, callback: (GameMessage) -> Unit) {
+        if (!callbacks.containsKey(type)) {
+            callbacks[type] = mutableListOf()
+        }
+
+        callbacks[type]?.add(callback)
+    }
+
+    fun unregisterCallback(type: MessageType, callback: (GameMessage) -> Unit) {
+        callbacks[type]?.remove(callback)
+    }
+
+    fun clearCallbacks() {
+        callbacks.clear()
     }
 }

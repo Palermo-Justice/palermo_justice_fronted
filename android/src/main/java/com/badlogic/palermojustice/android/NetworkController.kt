@@ -68,11 +68,34 @@ class NetworkController private constructor() : FirebaseInterface {
     }
 
     override fun sendMessage(messageType: String, data: Map<String, Any>) {
-        TODO("Not yet implemented")
+        try {
+            val type = MessageType.valueOf(messageType)
+
+            sendMessage(type, data)
+        } catch (e: Exception) {
+            println("Errore nell'invio del messaggio: ${e.message}")
+        }
     }
 
     override fun listenForGameUpdates(updateCallback: (Map<String, Any>) -> Unit) {
-        TODO("Not yet implemented")
+        messageHandler.registerCallback(MessageType.GAME_STATE_UPDATE) { message ->
+            try {
+                val payloadMap = message.payload as? Map<String, Any> ?:
+                messageHandler.json.toJson(message.payload).let {
+                    messageHandler.json.fromJson(Map::class.java, it) as Map<String, Any>
+                }
+
+                updateCallback(payloadMap)
+            } catch (e: Exception) {
+                println("Errore nella conversione del payload: ${e.message}")
+            }
+        }
+
+        if (roomListener == null && roomReference != null) {
+            roomReference?.key?.let { roomId ->
+                startRoomListener(roomId)
+            }
+        }
     }
 
     private fun startRoomListener(roomId: String) {
