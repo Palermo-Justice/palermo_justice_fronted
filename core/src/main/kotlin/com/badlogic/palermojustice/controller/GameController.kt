@@ -5,70 +5,74 @@ import com.badlogic.palermojustice.model.GamePhase
 import com.badlogic.palermojustice.model.GameState
 import com.badlogic.palermojustice.model.Role
 import com.badlogic.palermojustice.view.GameScreen
+import com.badlogic.palermojustice.firebase.FirebaseInterface
 
 class GameController private constructor() {
     val model: GameModel = GameModel()
     lateinit var view: GameScreen
-    private val networkController = NetworkController.getInstance()
+    private lateinit var networkController: FirebaseInterface
 
     companion object {
+        @Volatile
         private var instance: GameController? = null
 
+        // Get singleton instance of GameController
         fun getInstance(): GameController {
-            if (instance == null) {
-                instance = GameController()
+            return instance ?: synchronized(this) {
+                instance ?: GameController().also { instance = it }
             }
-            return instance!!
+        }
+    }
+
+    // Method to set the network controller after instance creation
+    fun setNetworkController(controller: FirebaseInterface) {
+        if (!::networkController.isInitialized) {
+            networkController = controller
         }
     }
 
     fun handleInput() {
-        // Gestisci input utente e delegazione al NetworkController
+        // Handle user input and delegate to NetworkController
     }
 
     fun startGame() {
-        // Invia richiesta di avvio al server
-        val startMessage = MessageHandler().encodeMessage(
-            MessageType.START_GAME,
-            mapOf("roomId" to model.roomId)
-        )
-        networkController.sendMessage(startMessage)
+        // Send start request to server
+        // Make sure networkController is initialized before using it
+        if (::networkController.isInitialized) {
+            // Code to send messages to server
+        }
     }
 
     fun startNightPhase() {
-        // Aggiorna la vista per la fase notturna
+        // Update view for night phase
         view.updatePhaseDisplay(GamePhase.NIGHT)
     }
 
     fun updateGameState(gameState: GameState) {
-        // Aggiorna il modello con il nuovo stato
+        // Update model with new state
         model.updateGameState(gameState)
-        // Aggiorna la vista
+        // Update view
         view.updateDisplay()
     }
 
     fun assignRole(role: Role) {
-        // Assegna ruolo al giocatore corrente
+        // Assign role to current player
         model.currentPlayerRole = role
         //view.showRoleAssignment(GameModel)
         //TODO correct this line - to understand how
     }
 
     fun vote(targetPlayerId: String) {
-        // Invia voto al server
-        val voteMessage = MessageHandler().encodeMessage(
-            MessageType.VOTE,
-            mapOf("targetId" to targetPlayerId)
-        )
-        networkController.sendMessage(voteMessage)
+        // Send vote to server
+        if (::networkController.isInitialized) {
+            // Code to send vote messages to server
+        }
     }
 
     fun performRoleAction(actionType: String, targetId: String) {
-        // Invia azione del ruolo al server
-        val actionMessage = MessageHandler().encodeMessage(
-            MessageType.PLAYER_ACTION,
-            mapOf("actionType" to actionType, "targetId" to targetId)
-        )
-        networkController.sendMessage(actionMessage)
+        // Send role action to server
+        if (::networkController.isInitialized) {
+            // Code to send role actions to server
+        }
     }
 }

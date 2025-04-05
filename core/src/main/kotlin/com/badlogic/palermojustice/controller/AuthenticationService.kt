@@ -1,3 +1,7 @@
+/**
+ * TODO decide if we need to authenticate users. I(panta) think it's not usefull now.
+ */
+
 package com.badlogic.palermojustice.service
 
 import com.badlogic.gdx.Gdx
@@ -6,17 +10,17 @@ import com.badlogic.gdx.Net
 class AuthenticationService {
     fun login(username: String, password: String, callback: (Boolean) -> Unit) {
         val httpRequest = Net.HttpRequest(Net.HttpMethods.POST)
-        httpRequest.url = "https://your-server/api/auth/login"
+        httpRequest.url = "https://your-server/api/auth/login" //TODO put our server
         httpRequest.content = "{\"username\":\"$username\",\"password\":\"$password\"}"
         httpRequest.setHeader("Content-Type", "application/json")
 
         Gdx.net.sendHttpRequest(httpRequest, object : Net.HttpResponseListener {
             override fun handleHttpResponse(httpResponse: Net.HttpResponse) {
                 val responseJson = httpResponse.resultAsString
-                // Estrai token e salvalo per usi futuri
+                // extract token and save it
                 val token = parseTokenFromResponse(responseJson)
                 if (token.isNotEmpty()) {
-                    // Salva token
+                    // save token
                     saveToken(token)
                     callback(true)
                 } else {
@@ -36,20 +40,20 @@ class AuthenticationService {
     }
 
     fun register(userData: UserData, callback: (Boolean) -> Unit) {
-        // Implementazione simile al login
+        // like login
     }
 
     fun validateToken(token: String, callback: (Boolean) -> Unit) {
-        // Implementazione per validare token
+        // validate token
     }
 
     private fun parseTokenFromResponse(responseJson: String): String {
-        // Implementa parsing
+        // Implement parsing
         return ""
     }
 
     private fun saveToken(token: String) {
-        // Salva token in preferences
+        // save token
         val prefs = Gdx.app.getPreferences("auth_prefs")
         prefs.putString("auth_token", token)
         prefs.flush()

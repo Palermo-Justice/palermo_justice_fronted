@@ -2,10 +2,10 @@ package com.badlogic.palermojustice.controller
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Net
 import com.badlogic.gdx.utils.Json
+import com.badlogic.palermojustice.firebase.FirebaseInterface
 
 
-class LobbyController {
-    private val networkController = NetworkController.getInstance()
+class LobbyController (private val networkController: FirebaseInterface) {
     private val messageHandler = MessageHandler()
 
     fun createGame(roomName: String, callback: (String) -> Unit) {
@@ -39,9 +39,9 @@ class LobbyController {
     }
 
     private fun parseRoomIdFromResponse(responseJson: String): String {
-        // Implementa il parsing del JSON
+        // Implement JSON parsing
         val json = Json()
-        val response = json.fromJson(Map::class.java, responseJson) as Map<String, Any>
-        return response["roomId"] as String
+        val response = "" //json.fromJson(Map::class.java, responseJson) as Map<String, Any>
+        return response //["roomId"] as String
     }
 }

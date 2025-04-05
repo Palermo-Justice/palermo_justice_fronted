@@ -22,7 +22,9 @@ enum class Role {
     PAESANO,
     ISPETTORE,
     SGARRISTA,
-    IL_PRETE
+    IL_PRETE,
+    PENTITO,
+    TRUFFATORE
 }
 
 class Player {
@@ -30,9 +32,9 @@ class Player {
     var role: Role? = null
     var isAlive: Boolean = true
 
-    fun getRole(): Role? {
+    /*fun getRole(): Role? {
         return role
-    }
+    }*/
 
     fun die() {
         isAlive = false

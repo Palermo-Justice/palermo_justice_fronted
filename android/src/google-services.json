@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "295968464065",
+    "project_id": "palermo-justice",
+    "storage_bucket": "palermo-justice.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:295968464065:android:5a8379ab28dd979e130840",
+        "android_client_info": {
+          "package_name": "com.badlogic.palermojustice"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIkocz9xsiY0XMCQKscvhxMDbKX6I6kAc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
