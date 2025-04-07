@@ -17,6 +17,7 @@ enum class GameState {
     FINISHED
 }
 
+//This may be redundant. TODO: understand if to put Role here or in a separate classe (Player.kt)
 enum class Role {
     MAFIOSO,
     PAESANO,
