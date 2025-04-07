@@ -10,14 +10,14 @@ class LobbyScreen : Screen {
 
         skin = Skin(Gdx.files.internal("pj2.json"))
 
-        // Imposta reference alla view nel controller
+        // Set reference to View in the controller
         gameController.view = this
 
         createUI()
     }
 
     private fun createUI() {
-        // ... il tuo codice UI esistente
+        // ... existing UI code
 
         startButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
@@ -25,20 +25,20 @@ class LobbyScreen : Screen {
             }
         })
 
-        // Per creare una nuova lobby
+        // Create new lobby
         createGameButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
                 lobbyController.createGame("My Game") { roomId ->
                     if (roomId.isNotEmpty()) {
                         codeLabel.setText("Room Code: $roomId")
                     } else {
-                        // Mostra errore
+                        // Show error
                     }
                 }
             }
         })
 
-        // Per unirsi ad una lobby
+        // To join a lobby
         joinButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
                 val roomCode = roomCodeField.text
@@ -46,14 +46,14 @@ class LobbyScreen : Screen {
 
                 lobbyController.joinGame(roomCode, playerName) { success ->
                     if (success) {
-                        // Aggiorna UI per mostrare che sei entrato
+                        // update UI
                     } else {
-                        // Mostra errore
+                        // Show error
                     }
                 }
             }
         })
     }
 
-    // Altri metodi...
+    // Other methods...
 }

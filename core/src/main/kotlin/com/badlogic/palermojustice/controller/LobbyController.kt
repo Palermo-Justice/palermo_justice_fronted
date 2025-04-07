@@ -9,7 +9,7 @@ class LobbyController (private val networkController: FirebaseInterface) {
     private val messageHandler = MessageHandler()
 
     fun createGame(roomName: String, callback: (String) -> Unit) {
-        // Implementa la chiamata HTTP per creare una nuova stanza
+        // Implement http call for a new room (maybe not needed because we are using firebase)
         val httpRequest = Net.HttpRequest(Net.HttpMethods.POST)
         httpRequest.url = "https://your-server/api/rooms/create"
         httpRequest.content = "{\"roomName\":\"$roomName\"}"

@@ -7,16 +7,15 @@ class InputController : InputProcessor {
     private val gameController = GameController.getInstance()
 
     fun handleTouch(x: Int, y: Int) {
-        // Converti coordinate touch in azioni di gioco
-        // e invia tramite gameController
+        // convert actions from touch and send to controller
     }
 
     fun handleKeyboard() {
-        // Gestisci input da tastiera
+        // Manage keyboard input
     }
 
     fun processInput() {
-        // Elabora input accumulato
+        // Manage other input
     }
 
     override fun keyDown(keycode: Int): Boolean {
@@ -31,7 +30,7 @@ class InputController : InputProcessor {
         TODO("Not yet implemented")
     }
 
-    // Implementa i metodi di InputProcessor
+    // Implement input processor
     override fun touchDown(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
         handleTouch(screenX, screenY)
         return true
@@ -56,6 +55,4 @@ class InputController : InputProcessor {
     override fun scrolled(amountX: Float, amountY: Float): Boolean {
         TODO("Not yet implemented")
     }
-
-    // Altri metodi di InputProcessor...
 }
