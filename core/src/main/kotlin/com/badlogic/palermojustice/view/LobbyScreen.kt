@@ -68,7 +68,7 @@ class LobbyScreen : Screen {
         startButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
 
-                Main.instance.setScreen(GameScreen())
+                Main.instance.setScreen(RoleActionScreen())
             }
         })
 
