@@ -5,7 +5,6 @@ import android.os.Bundle;
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
 import com.badlogic.palermojustice.Main;
-import com.badlogic.palermojustice.firebase.AndroidFirebaseService;
 import com.badlogic.palermojustice.firebase.FirebaseInterface;
 import com.google.firebase.analytics.FirebaseAnalytics;
 
@@ -18,7 +17,8 @@ public class AndroidLauncher extends AndroidApplication {
         super.onCreate(savedInstanceState);
 
         // Create Firebase implementation for Android
-        FirebaseInterface firebaseService = new AndroidFirebaseService();
+        // Initialize the NetworkController with context and get the instance
+        FirebaseInterface firebaseService = NetworkController.initialize(this);
         //firebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
         // Log an event to Firebase

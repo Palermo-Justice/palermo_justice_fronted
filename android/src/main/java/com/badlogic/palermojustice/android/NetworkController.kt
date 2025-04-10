@@ -6,11 +6,13 @@ import com.badlogic.palermojustice.controller.MessageType
 import com.badlogic.palermojustice.firebase.FirebaseInterface
 import com.badlogic.palermojustice.model.GameModel
 import com.badlogic.palermojustice.model.GameState
+import android.content.Context
 import com.google.firebase.database.*
 import com.google.firebase.database.database
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 
-class NetworkController private constructor() : FirebaseInterface {
+class NetworkController private constructor(private val context: Context) : FirebaseInterface {
     private val database = Firebase.database.reference
     private val messageHandler = MessageHandler()
     private var roomReference: DatabaseReference? = null
@@ -19,13 +21,23 @@ class NetworkController private constructor() : FirebaseInterface {
     private var messagesListener: ChildEventListener? = null
 
     companion object {
+        @JvmStatic
         private var instance: NetworkController? = null
 
-        fun getInstance(): NetworkController {
-            if (instance == null) {
-                instance = NetworkController()
+        @JvmStatic
+        fun initialize(context: Context): NetworkController {
+            // Ensure Firebase is initialized
+            if (FirebaseApp.getApps(context).isEmpty()) {
+                FirebaseApp.initializeApp(context)
             }
+
+            instance = NetworkController(context)
             return instance!!
+        }
+
+        @JvmStatic
+        fun getInstance(): NetworkController {
+            return instance ?: throw IllegalStateException("NetworkController must be initialized before getting instance")
         }
     }
 
@@ -73,7 +85,7 @@ class NetworkController private constructor() : FirebaseInterface {
 
             sendMessage(type, data)
         } catch (e: Exception) {
-            println("Errore nell'invio del messaggio: ${e.message}")
+            println("Error sending message: ${e.message}")
         }
     }
 
@@ -87,7 +99,7 @@ class NetworkController private constructor() : FirebaseInterface {
 
                 updateCallback(payloadMap)
             } catch (e: Exception) {
-                println("Errore nella conversione del payload: ${e.message}")
+                println("Error converting payload: ${e.message}")
             }
         }
 
@@ -113,6 +125,7 @@ class NetworkController private constructor() : FirebaseInterface {
 
             override fun onCancelled(error: DatabaseError) {
                 // Handle cancellation
+                println("Room listener cancelled: ${error.message}")
             }
         }
 
@@ -143,6 +156,7 @@ class NetworkController private constructor() : FirebaseInterface {
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onCancelled(error: DatabaseError) {
                 // Handle cancellation
+                println("Messages listener cancelled: ${error.message}")
             }
         }
 
@@ -162,6 +176,7 @@ class NetworkController private constructor() : FirebaseInterface {
             roomReference?.child("messages")?.push()?.setValue(firebaseMessage)
         } catch (e: Exception) {
             // Handle error
+            println("Error creating or sending message: ${e.message}")
         }
     }
 
