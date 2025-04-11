@@ -80,28 +80,24 @@ class CreateGameScreen : Screen {
         createButton.pad(10f)
         createButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // Recupera i dati dall'UI
+                // Retrieve UI data
                 val gameName = gameNameField.text
                 val playerCount = playerCountSelectBox.selected.toInt()
                 val playerName = playerNameField.text
 
-                // Verifica che i campi obbligatori siano compilati
                 if (gameName.isBlank() || playerName.isBlank()) {
                     showErrorDialog("Please fill in all required fields")
                     return
                 }
 
-                // Prepara le impostazioni della stanza
                 val roomSettings = mapOf(
                     "name" to gameName,
                     "maxPlayers" to playerCount,
                     "createdBy" to playerName
                 )
 
-                // Mostra un dialogo di caricamento
                 val loadingDialog = showLoadingDialog("Creating game...")
 
-                // Usa l'interfaccia da Main anziché NetworkController direttamente
                 Main.instance.firebaseInterface.createRoom(playerName, roomSettings) { roomId ->
                     Gdx.app.postRunnable {
                         loadingDialog.hide()
