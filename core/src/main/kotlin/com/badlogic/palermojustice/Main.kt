@@ -11,14 +11,16 @@ class Main : Game {
             private set
     }
 
+    lateinit var firebaseInterface: FirebaseInterface
+
     // Constructor without parameters (for Desktop mock)
     constructor() {
         // Nothing
     }
 
-    constructor(firebaseService: FirebaseInterface) {
-        GameController.getInstance().setNetworkController(firebaseService)
-    }
+//    constructor(firebaseService: FirebaseInterface) {
+//        GameController.getInstance().setNetworkController(firebaseService)
+//    }
 
     override fun create() {
         instance = this

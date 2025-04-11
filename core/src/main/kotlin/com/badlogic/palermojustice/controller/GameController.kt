@@ -45,7 +45,7 @@ class GameController private constructor() {
 
     fun startNightPhase() {
         // Update view for night phase
-        view.updatePhaseDisplay(GamePhase.NIGHT)
+        view.updatePhaseDisplay(GamePhase.NIGHT.toString())
     }
 
     fun updateGameState(gameState: GameState) {

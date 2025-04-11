@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
+import com.badlogic.palermojustice.firebase.FirebaseInterface
 
 class CreateGameScreen : Screen {
     private lateinit var stage: Stage
@@ -79,13 +80,44 @@ class CreateGameScreen : Screen {
         createButton.pad(10f)
         createButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // Game logic
+                // Recupera i dati dall'UI
                 val gameName = gameNameField.text
                 val playerCount = playerCountSelectBox.selected.toInt()
                 val playerName = playerNameField.text
 
+                // Verifica che i campi obbligatori siano compilati
+                if (gameName.isBlank() || playerName.isBlank()) {
+                    showErrorDialog("Please fill in all required fields")
+                    return
+                }
 
-                Main.instance.setScreen(LobbyScreen())
+                // Prepara le impostazioni della stanza
+                val roomSettings = mapOf(
+                    "name" to gameName,
+                    "maxPlayers" to playerCount,
+                    "createdBy" to playerName
+                )
+
+                // Mostra un dialogo di caricamento
+                val loadingDialog = showLoadingDialog("Creating game...")
+
+                // Usa l'interfaccia da Main anziché NetworkController direttamente
+                Main.instance.firebaseInterface.createRoom(playerName, roomSettings) { roomId ->
+                    Gdx.app.postRunnable {
+                        loadingDialog.hide()
+
+                        if (roomId != null) {
+                            Main.instance.setScreen(LobbyScreen(
+                                roomId = roomId,
+                                playerName = playerName,
+                                isHost = true,
+                                gameName = gameName
+                            ))
+                        } else {
+                            showErrorDialog("Failed to create game. Please try again.")
+                        }
+                    }
+                }
             }
         })
 
@@ -114,5 +146,20 @@ class CreateGameScreen : Screen {
     override fun dispose() {
         stage.dispose()
         skin.dispose()
+    }
+
+    private fun showErrorDialog(message: String): Dialog {
+        val dialog = Dialog("Error", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.button("OK")
+        dialog.show(stage)
+        return dialog
+    }
+
+    private fun showLoadingDialog(message: String): Dialog {
+        val dialog = Dialog("", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.show(stage)
+        return dialog
     }
 }

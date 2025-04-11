@@ -48,6 +48,83 @@ class NetworkController private constructor(private val context: Context) : Fire
         }
     }
 
+    /**
+     * Creates a new game room and returns the room ID.
+     * @param hostName The name of the host player
+     * @param roomSettings Optional map of initial room settings (like max players, game options, etc.)
+     * @param callback Callback with roomId on success, null on failure
+     */
+    override fun createRoom(hostName: String, roomSettings: Map<String, Any>, callback: (String?) -> Unit) {
+        Log.d(TAG, "createRoom: Creating new room with host $hostName")
+        try {
+            // Generate a unique room ID
+            val roomId = generateRoomId()
+            Log.d(TAG, "createRoom: Generated room ID: $roomId")
+
+            // Create initial room state as a Map
+            val initialRoomState = mapOf(
+                "roomId" to roomId,
+                "state" to GameState.WAITING.name,
+                "hostPlayerId" to "", // Will be updated after player is created
+                "players" to mapOf<String, Any>(),
+                "currentPhase" to "LOBBY",
+                "settings" to roomSettings,
+                "createdAt" to ServerValue.TIMESTAMP
+            )
+            Log.d(TAG, "createRoom: Initial room state created")
+
+            // Create the room in Firebase
+            val roomRef = database.child("rooms").child(roomId)
+            roomRef.setValue(initialRoomState)
+                .addOnSuccessListener {
+                    Log.d(TAG, "createRoom: Room created successfully")
+
+                    // Now connect the host to the room
+                    connectToRoom(roomId, hostName) { success ->
+                        if (success) {
+                            Log.d(TAG, "createRoom: Host connected to room successfully")
+
+                            // Update the hostPlayerId in the room
+                            playerReference?.key?.let { playerId ->
+                                roomRef.child("hostPlayerId").setValue(playerId)
+                                    .addOnSuccessListener {
+                                        Log.d(TAG, "createRoom: Host ID updated in room")
+                                        callback(roomId)
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e(TAG, "createRoom: Failed to update host ID", e)
+                                        callback(roomId) // Still return the room ID as the room was created
+                                    }
+                            } ?: callback(roomId)
+                        } else {
+                            Log.e(TAG, "createRoom: Failed to connect host to room")
+                            // Clean up the created room
+                            roomRef.removeValue()
+                            callback(null)
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "createRoom: Failed to create room", e)
+                    callback(null)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "createRoom: Exception occurred", e)
+            callback(null)
+        }
+    }
+
+    /**
+     * Generates a random room ID with the option to specify length.
+     * Room IDs are alphanumeric for ease of sharing.
+     */
+    private fun generateRoomId(length: Int = 6): String {
+        val allowedChars = ('A'..'Z') + ('0'..'9')
+        return (1..length)
+            .map { allowedChars.random() }
+            .joinToString("")
+    }
+
     override fun connectToRoom(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
         Log.d(TAG, "connectToRoom: Attempting to connect to room $roomId as $playerName")
         try {
@@ -181,7 +258,7 @@ class NetworkController private constructor(private val context: Context) : Fire
     private fun startMessagesListener(roomId: String) {
         Log.d(TAG, "startMessagesListener: Setting up messages listener for room $roomId")
         val messagesRef = database.child("rooms").child(roomId).child("messages")
-        Log.d(TAG, "startMessagesListener: Messages reference path: ${messagesRef.path}")
+        //Log.d(TAG, "startMessagesListener: Messages reference path: ${messagesRef.path}")
 
         messagesListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
