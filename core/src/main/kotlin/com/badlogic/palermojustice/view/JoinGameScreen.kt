@@ -35,14 +35,15 @@ class JoinGameScreen : Screen {
 
         // title
         val titleLabel = Label("JOIN GAME", skin, "title")
+        titleLabel.setFontScale(3f)
         titleLabel.setAlignment(Align.center)
         mainTable.add(titleLabel).expandX().center().padBottom(50f).row()
 
         // Name field table
         val nameTable = Table()
         val nameLabel = Label("NAME", skin)
-        nameLabel.setFontScale(1.2f)
-        nameTable.add(nameLabel).width(100f).padRight(10f)
+        nameLabel.setFontScale(3f)
+        nameTable.add(nameLabel).width(100f).padRight(50f)
 
         nameField = TextField("", skin)
         nameTable.add(nameField).fillX().height(50f)
@@ -52,8 +53,8 @@ class JoinGameScreen : Screen {
         // Code field table
         val codeTable = Table()
         val codeLabel = Label("CODE", skin)
-        codeLabel.setFontScale(1.2f)
-        codeTable.add(codeLabel).width(100f).padRight(10f)
+        codeLabel.setFontScale(3f)
+        codeTable.add(codeLabel).width(100f).padRight(50f)
 
         codeField = TextField("", skin)
         codeTable.add(codeField).fillX().height(50f)

@@ -49,6 +49,7 @@ class SettingsScreen : Screen {
 
         // Create UI elements
         val titleLabel = Label("SETTINGS", skin)
+        titleLabel.setFontScale(5f)
         var backButton = TextButton("BACK", skin)
 
         languageSelectBox = SelectBox(skin)

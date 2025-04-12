@@ -10,7 +10,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.model.GameState
 
-class RoleActionScreen : Screen {
+class RoleAssignmentScreen : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
 
@@ -29,56 +29,21 @@ class RoleActionScreen : Screen {
         stage.addActor(mainTable)
 
         // Header
-        val titleLabel = Label("YOU ARE...", skin, "title")
+        val titleLabel = Label("YOU ARE THE...", skin, "title")
         titleLabel.setAlignment(Align.center)
+        titleLabel.setFontScale(3f)
         mainTable.add(titleLabel).expandX().align(Align.center).padBottom(20f).row()
 
         // Get current role and player
         val currentRole = GameState.roleSequence[GameState.currentRoleIndex]
-        val currentPlayer = GameState.getPlayerByRole(currentRole)
+//        val currentPlayer = GameState.getPlayerByRole(currentRole)
 
         // Role label
         val roleLabel = Label(currentRole, skin, "default")
         roleLabel.setAlignment(Align.center)
+        roleLabel.setFontScale(7f)
         mainTable.add(roleLabel).expandX().align(Align.center).padBottom(40f).row()
 
-        // Player selection list
-        val list = List<String>(skin)
-        list.setItems(*GameState.players.map { it.name }.toTypedArray())
-        val scrollPane = ScrollPane(list, skin)
-        mainTable.add(scrollPane).width(300f).height(200f).padBottom(20f).row()
-
-        // Confirm button
-        val confirmButton = TextButton("Confirm", skin)
-        confirmButton.addListener {
-            val selectedName = list.selected
-            val targetPlayer = GameState.players.find { it.name == selectedName }
-
-            // If no player is selected, return early with false
-            if (targetPlayer == null) {
-                return@addListener false
-            }
-            // If this player actually has the role, perform the action
-            //currentPlayer?.let {
-               // if (it.role.name == currentRole) {
-               //     it.role.performAction(GameState.players, targetPlayer)
-               // }
-            //}
-
-            // Move to the next role
-            GameState.currentRoleIndex++
-
-            // If all roles have acted, end phase; otherwise, go to next role
-            if (GameState.currentRoleIndex < GameState.roleSequence.size) {
-                Main.instance.setScreen(LobbyScreen())
-            } else {
-                Main.instance.setScreen(LobbyScreen())
-            }
-
-            true
-        }
-
-        mainTable.add(confirmButton).width(200f).padTop(20f)
     }
 
     override fun render(delta: Float) {
