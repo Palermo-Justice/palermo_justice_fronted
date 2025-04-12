@@ -1,47 +1,100 @@
 package com.badlogic.palermojustice.controller
+
 import com.badlogic.gdx.Gdx
-import com.badlogic.gdx.Net
-import com.badlogic.gdx.utils.Json
 import com.badlogic.palermojustice.firebase.FirebaseInterface
+import com.badlogic.palermojustice.model.GameState
+import com.badlogic.palermojustice.view.LobbyScreen
 
-
-class LobbyController (private val networkController: FirebaseInterface) {
+class LobbyController(
+    private val networkController: FirebaseInterface,
+    private val roomId: String,
+    private val playerName: String,
+    private val isHost: Boolean
+) {
     private val messageHandler = MessageHandler()
+    private var view: LobbyScreen? = null
+    private val playersList = mutableListOf<String>()
 
-    fun createGame(roomName: String, callback: (String) -> Unit) {
-        // Implement http call for a new room (maybe not needed because we are using firebase)
-        val httpRequest = Net.HttpRequest(Net.HttpMethods.POST)
-        httpRequest.url = "https://your-server/api/rooms/create"
-        httpRequest.content = "{\"roomName\":\"$roomName\"}"
-        httpRequest.setHeader("Content-Type", "application/json")
-
-        Gdx.net.sendHttpRequest(httpRequest, object : Net.HttpResponseListener {
-            override fun handleHttpResponse(httpResponse: Net.HttpResponse) {
-                val responseJson = httpResponse.resultAsString
-                // Parse the JSON to get the room ID
-                val roomId = parseRoomIdFromResponse(responseJson)
-                callback(roomId)
-            }
-
-            override fun failed(t: Throwable) {
-                Gdx.app.error("NETWORK", "Failed to create room", t)
-                callback("")
-            }
-
-            override fun cancelled() {
-                callback("")
-            }
-        })
+    init {
+        // Add current player to the list
+        playersList.add(playerName)
     }
 
-    fun joinGame(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
+    // Method to connect the view to the controller
+    fun setView(lobbyScreen: LobbyScreen) {
+        this.view = lobbyScreen
+        setupPlayerUpdates()
+    }
+
+    // Configure player updates
+    private fun setupPlayerUpdates() {
+        // Listen for game updates from Firebase
+        networkController.listenForGameUpdates { gameData ->
+            Gdx.app.postRunnable {
+                updatePlayersFromGameData(gameData)
+            }
+        }
+    }
+
+    // Update player list from game data
+    private fun updatePlayersFromGameData(gameData: Map<String, Any>) {
+        // Extract player data
+        val playersMap = gameData["players"] as? Map<String, Any> ?: return
+
+        // Reset player list (except self)
+        playersList.clear()
+        playersList.add(playerName) // Keep self in the list
+
+        // Add all players from data
+        playersMap.forEach { (_, playerData) ->
+            val player = playerData as? Map<String, Any> ?: return@forEach
+            val name = player["name"] as? String ?: return@forEach
+            if (name != playerName && !playersList.contains(name)) {
+                playersList.add(name)
+            }
+        }
+
+        // Update UI
+        view?.updatePlayersList(playersList)
+    }
+
+    // Start the game
+    fun startGame() {
+        if (isHost && playersList.size >= 3) { // Minimum 3 players to start
+            // Send start game message
+            val gameData = mapOf(
+                "state" to "RUNNING",
+                "players" to playersList
+            )
+            networkController.sendMessage("START_GAME", gameData)
+            view?.navigateToGameScreen(roomId, playerName, isHost)
+        } else if (playersList.size < 3) {
+            view?.showMessage("Need at least 3 players to start")
+        }
+    }
+
+    // Disconnect from the game
+    fun disconnect() {
+        networkController.disconnect()
+    }
+
+    // Get current player list
+    fun getPlayersList(): List<String> {
+        return playersList.toList() // Return a copy of the list
+    }
+
+    // Check if user is host
+    fun isHost(): Boolean {
+        return isHost
+    }
+
+    // Join an existing room
+    fun joinRoom(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
         networkController.connectToRoom(roomId, playerName, callback)
     }
 
-    private fun parseRoomIdFromResponse(responseJson: String): String {
-        // Implement JSON parsing
-        val json = Json()
-        val response = "" //json.fromJson(Map::class.java, responseJson) as Map<String, Any>
-        return response //["roomId"] as String
+    // Copy room code to clipboard - platform specific implementation required
+    fun copyRoomCode(): String {
+        return roomId
     }
 }
