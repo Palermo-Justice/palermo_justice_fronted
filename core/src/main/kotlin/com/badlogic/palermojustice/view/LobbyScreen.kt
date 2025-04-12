@@ -3,7 +3,6 @@ package com.badlogic.palermojustice.view
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
@@ -68,7 +67,7 @@ class LobbyScreen : Screen {
         startButton.pad(10f)
         startButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                Main.instance.setScreen(RoleActionScreen())
+                Main.instance.setScreen(RoleAssignmentScreen())
             }
         })
 

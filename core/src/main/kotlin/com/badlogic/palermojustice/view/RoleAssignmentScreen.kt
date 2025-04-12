@@ -10,7 +10,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.model.GameState
 
-class RoleActionScreen : Screen {
+class RoleAssignmentScreen : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
 
