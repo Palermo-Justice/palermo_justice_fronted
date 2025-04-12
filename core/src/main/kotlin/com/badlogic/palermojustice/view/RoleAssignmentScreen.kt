@@ -36,7 +36,7 @@ class RoleAssignmentScreen : Screen {
 
         // Get current role and player
         val currentRole = GameState.roleSequence[GameState.currentRoleIndex]
-        val currentPlayer = GameState.getPlayerByRole(currentRole)
+//        val currentPlayer = GameState.getPlayerByRole(currentRole)
 
         // Role label
         val roleLabel = Label(currentRole, skin, "default")
