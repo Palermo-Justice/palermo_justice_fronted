@@ -34,6 +34,7 @@ class LobbyScreen : Screen {
         // header table
         val headerTable = Table()
         val titleLabel = Label("GAME NAME", skin, "title")
+        titleLabel.setFontScale(3f)
         titleLabel.setAlignment(Align.center)
 
         // back button
@@ -48,6 +49,7 @@ class LobbyScreen : Screen {
         headerTable.add(titleLabel).expandX().align(Align.center)
 
         val codeLabel = Label("Code", skin, "title")
+        codeLabel.setFontScale(2f)
         //TODO Players will be added in a loop (add as many players as joined the game)
         val playerNameField = TextField("Player 1", skin)
         val playerNameField2 = TextField("Player 2", skin)
@@ -58,7 +60,6 @@ class LobbyScreen : Screen {
         rolesButton.pad(10f)
         rolesButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // TODO roles screen for this game
                 Main.instance.setScreen(RolesScreen())
             }
         })
@@ -67,7 +68,6 @@ class LobbyScreen : Screen {
         startButton.pad(10f)
         startButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-
                 Main.instance.setScreen(RoleActionScreen())
             }
         })

@@ -31,6 +31,7 @@ class RoleActionScreen : Screen {
         // Header
         val titleLabel = Label("YOU ARE...", skin, "title")
         titleLabel.setAlignment(Align.center)
+        titleLabel.setFontScale(3f)
         mainTable.add(titleLabel).expandX().align(Align.center).padBottom(20f).row()
 
         // Get current role and player
@@ -40,6 +41,7 @@ class RoleActionScreen : Screen {
         // Role label
         val roleLabel = Label(currentRole, skin, "default")
         roleLabel.setAlignment(Align.center)
+        roleLabel.setFontScale(5f)
         mainTable.add(roleLabel).expandX().align(Align.center).padBottom(40f).row()
 
         // Player selection list
