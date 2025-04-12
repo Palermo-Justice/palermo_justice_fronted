@@ -30,15 +30,15 @@ class AnnouncementScreen(private val resultText: String) : Screen {
         stage.addActor(table)
 
         // Title
-        val titleLabel = Label("Morning has come...", skin, "narration")
+        val titleLabel = Label("Morning has come...", skin, "title")
         titleLabel.setAlignment(Align.center)
-        titleLabel.setFontScale(5f)
+        titleLabel.setFontScale(2.5f)
         table.add(titleLabel).expandX().align(Align.center).padBottom(30f).row()
 
         // Result Text
-        val resultLabel = Label(resultText, skin, "big")
+        val resultLabel = Label(resultText, skin, "narration")
         resultLabel.setAlignment(Align.center)
-        resultLabel.setFontScale(2f)
+        resultLabel.setFontScale(5f)
         table.add(resultLabel).expandX().align(Align.center).padBottom(30f).row()
     }
 
