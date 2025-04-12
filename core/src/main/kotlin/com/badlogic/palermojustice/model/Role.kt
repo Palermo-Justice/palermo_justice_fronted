@@ -1,5 +1,4 @@
 package com.badlogic.palermojustice.model
-import com.mygame.model.com.badlogic.palermojustice.Player
 
 abstract class Role(val name: String) {
     abstract fun performAction(players: List<Player>, target: Player)

@@ -1,6 +1,4 @@
-package com.mygame.model.com.badlogic.palermojustice
-
-enum class Role { PAESANO, MAFIOSO, ISPETTORE, SGARRISTA, PRETE, PENTITO, TRUFFATORE }
+package com.badlogic.palermojustice.model
 
 data class Player(
     val id: String,
