@@ -245,18 +245,30 @@ class NetworkController private constructor(private val context: Context) : Fire
         roomListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 Log.d(TAG, "startRoomListener.onDataChange: Received data change for room")
-                // Convert snapshot to GameState
-                val gameState = snapshot.getValue(GameState::class.java)
-                if (gameState != null) {
-                    Log.d(TAG, "startRoomListener.onDataChange: Successfully converted to GameState")
-                    // Create a GAME_STATE_UPDATE message
-                    val gameMessage = GameMessage(MessageType.GAME_STATE_UPDATE, gameState)
-                    // Send message to router
-                    messageHandler.routeMessage(gameMessage)
-                    Log.d(TAG, "startRoomListener.onDataChange: Message routed to handler")
-                } else {
-                    Log.w(TAG, "startRoomListener.onDataChange: Failed to convert snapshot to GameState")
-                    Log.d(TAG, "startRoomListener.onDataChange: Snapshot: ${snapshot.value}")
+                try {
+                    // Ottieni tutti i dati come Map
+                    val roomData = snapshot.getValue() as? Map<String, Any>
+
+                    if (roomData != null) {
+                        Log.d(TAG, "startRoomListener.onDataChange: Room data parsed: $roomData")
+
+                        // Crea un GameMessage con i dati completi della stanza
+                        val gameMessage = GameMessage(
+                            type = MessageType.GAME_STATE_UPDATE,
+                            payload = roomData
+                        )
+
+                        // Invia il messaggio al message handler
+                        Log.d(TAG, "startRoomListener.onDataChange: About to route message: $gameMessage")
+                        messageHandler.routeMessage(gameMessage)
+                        Log.d(TAG, "startRoomListener.onDataChange: Message routed to handler")
+                    } else {
+                        Log.w(TAG, "startRoomListener.onDataChange: Room data is null")
+                        Log.d(TAG, "startRoomListener.onDataChange: Snapshot value: ${snapshot.value}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "startRoomListener.onDataChange: Error processing room data", e)
+                    Log.d(TAG, "startRoomListener.onDataChange: Snapshot value: ${snapshot.value}")
                 }
             }
 

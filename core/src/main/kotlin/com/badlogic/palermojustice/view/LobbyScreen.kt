@@ -78,7 +78,7 @@ class LobbyScreen(
             val playerLabel = Label(name, skin)
             // Style the current player differently
             if (name == playerName) {
-                playerLabel.style = skin.get("bold", Label.LabelStyle::class.java)
+                playerLabel.style = skin.get("default", Label.LabelStyle::class.java)
             }
             playersTable.add(playerLabel).fillX().height(50f).padBottom(10f).row()
         }

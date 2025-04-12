@@ -1,13 +1,14 @@
 {
   "project_info": {
-    "project_number": "295968464065",
-    "project_id": "palermo-justice",
-    "storage_bucket": "palermo-justice.firebasestorage.app"
+    "project_number": "485191359634",
+    "firebase_url": "https://palermojusticetest-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "palermojusticetest",
+    "storage_bucket": "palermojusticetest.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:295968464065:android:5a8379ab28dd979e130840",
+        "mobilesdk_app_id": "1:485191359634:android:46de9ec811a7f8ca871a4b",
         "android_client_info": {
           "package_name": "com.badlogic.palermojustice"
         }
@@ -15,7 +16,26 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAIkocz9xsiY0XMCQKscvhxMDbKX6I6kAc"
+          "current_key": "AIzaSyAXDMaWcisQtl-GiXLVdMXZLixSIl2jN88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:485191359634:android:3bdcd10379025ec6871a4b",
+        "android_client_info": {
+          "package_name": "com.tdt4240.palermojusticetest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXDMaWcisQtl-GiXLVdMXZLixSIl2jN88"
         }
       ],
       "services": {

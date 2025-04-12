@@ -43,22 +43,50 @@ class MessageHandler {
     fun routeMessage(message: GameMessage) {
         when (message.type) {
             MessageType.GAME_STATE_UPDATE -> {
-                // Update model with new status
-                val gameState = json.fromJson(GameState::class.java, json.toJson(message.payload))
-                gameController.updateGameState(gameState)
+                try {
+                    println("Payload: ${message.payload}")
+
+                    val payloadJson = json.toJson(message.payload)
+                    println("Payload JSON: $payloadJson")
+
+                    if (gameController == null) {
+                        println("GameController is null!")
+                        return
+                    }
+
+                    val gameState = try {
+                        json.fromJson(GameState::class.java, payloadJson)
+                    } catch (e: Exception) {
+                        println("Error converting payload to GameState: ${e.message}")
+                        null
+                    }
+
+                    if (gameState == null) {
+                        println("Converted GameState is null!")
+                        return
+                    }
+
+                    gameController.updateGameState(gameState)
+                } catch (e: Exception) {
+                    println("Error in routeMessage: ${e.message}")
+                    e.printStackTrace()
+                }
             }
-            MessageType.ROLE_ASSIGNMENT -> {
-                // Assign role to player
-                val role = json.fromJson(Role::class.java, json.toJson(message.payload))
-                gameController.assignRole(role)
-            }
-            else -> {
-                // TODO manage exceptions
-            }
+            MessageType.JOIN_ROOM -> TODO()
+            MessageType.LEAVE_ROOM -> TODO()
+            MessageType.START_GAME -> TODO()
+            MessageType.PLAYER_ACTION -> TODO()
+            MessageType.VOTE -> TODO()
+            MessageType.ROLE_ASSIGNMENT -> TODO()
+            MessageType.CHAT_MESSAGE -> TODO()
         }
 
         callbacks[message.type]?.forEach { callback ->
-            callback(message)
+            try {
+                callback(message)
+            } catch (e: Exception) {
+                println("Error executing callback: ${e.message}")
+            }
         }
     }
 
