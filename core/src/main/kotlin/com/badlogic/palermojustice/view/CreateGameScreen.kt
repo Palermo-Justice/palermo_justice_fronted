@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.firebase.FirebaseInterface
 
+
 class CreateGameScreen : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
@@ -98,6 +99,16 @@ class CreateGameScreen : Screen {
 
                 val loadingDialog = showLoadingDialog("Creating game...")
 
+                val debugButton = TextButton("DEBUG: Force Continue", skin)
+                debugButton.addListener(object : ChangeListener() {
+                    override fun changed(event: ChangeEvent, actor: Actor) {
+                        loadingDialog.hide()
+                        val debugRoomId = "DEBUG_" + System.currentTimeMillis()
+                        Main.instance.setScreen(LobbyScreen(debugRoomId, playerName, true, gameName))
+                    }
+                })
+                loadingDialog.button(debugButton)
+
                 Main.instance.firebaseInterface.createRoom(playerName, roomSettings) { roomId ->
                     Gdx.app.postRunnable {
                         loadingDialog.hide()
@@ -146,7 +157,7 @@ class CreateGameScreen : Screen {
 
     private fun showErrorDialog(message: String): Dialog {
         val dialog = Dialog("Error", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.contentTable.add(Label(message, skin)).pad(20f).size(500f, 500f)
         dialog.button("OK")
         dialog.show(stage)
         return dialog
@@ -154,7 +165,7 @@ class CreateGameScreen : Screen {
 
     private fun showLoadingDialog(message: String): Dialog {
         val dialog = Dialog("", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.contentTable.add(Label(message, skin)).pad(20f).size(500f, 500f)
         dialog.show(stage)
         return dialog
     }

@@ -77,15 +77,17 @@ class NetworkController private constructor(private val context: Context) : Fire
             val roomRef = database.child("rooms").child(roomId)
             roomRef.setValue(initialRoomState)
                 .addOnSuccessListener {
-                    Log.d(TAG, "createRoom: Room created successfully")
+                    Log.d(TAG, "createRoom: Room created successfully in Firebase")
 
                     // Now connect the host to the room
                     connectToRoom(roomId, hostName) { success ->
+                        Log.d(TAG, "createRoom: connectToRoom callback received with success=$success")
                         if (success) {
                             Log.d(TAG, "createRoom: Host connected to room successfully")
 
                             // Update the hostPlayerId in the room
                             playerReference?.key?.let { playerId ->
+                                Log.d(TAG, "createRoom: Updating hostPlayerId to $playerId")
                                 roomRef.child("hostPlayerId").setValue(playerId)
                                     .addOnSuccessListener {
                                         Log.d(TAG, "createRoom: Host ID updated in room")
@@ -93,20 +95,33 @@ class NetworkController private constructor(private val context: Context) : Fire
                                     }
                                     .addOnFailureListener { e ->
                                         Log.e(TAG, "createRoom: Failed to update host ID", e)
-                                        callback(roomId) // Still return the room ID as the room was created
+                                        // Still return the room ID as the room was created
+                                        callback(roomId)
                                     }
-                            } ?: callback(roomId)
+                                    .addOnCompleteListener {
+                                        Log.d(TAG, "createRoom: hostPlayerId update operation completed")
+                                    }
+                            } ?: run {
+                                Log.w(TAG, "createRoom: playerReference.key is null, cannot update hostPlayerId")
+                                callback(roomId)
+                            }
                         } else {
                             Log.e(TAG, "createRoom: Failed to connect host to room")
                             // Clean up the created room
                             roomRef.removeValue()
-                            callback(null)
+                                .addOnCompleteListener {
+                                    Log.d(TAG, "createRoom: Room cleanup completed after failed connection")
+                                    callback(null)
+                                }
                         }
                     }
                 }
                 .addOnFailureListener { e ->
                     Log.e(TAG, "createRoom: Failed to create room", e)
                     callback(null)
+                }
+                .addOnCompleteListener {
+                    Log.d(TAG, "createRoom: Room creation operation completed")
                 }
         } catch (e: Exception) {
             Log.e(TAG, "createRoom: Exception occurred", e)
