@@ -24,16 +24,23 @@ class LobbyScreen(
     private lateinit var codeLabel: Label
     private lateinit var playersTable: Table
 
+    // Store pending player updates until UI is ready
+    private var pendingPlayersList: List<String>? = null
+
     // Controller for logic
     private lateinit var controller: LobbyController
 
     override fun show() {
+        // First initialize the UI
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
         skin = Skin(Gdx.files.internal("pj2.json"))
 
-        // Initialize controller
+        // Create UI before controller initialization
+        createUI()
+
+        // Only after UI is ready, initialize controller
         controller = LobbyController(
             Main.instance.firebaseInterface,
             roomId,
@@ -41,12 +48,17 @@ class LobbyScreen(
             isHost
         )
         controller.setView(this)
-
-        createUI()
     }
 
     // Update player list in UI
     fun updatePlayersList(playersList: List<String>) {
+        // Check if UI is initialized
+        if (!this::playersTable.isInitialized) {
+            // Store the update for later
+            pendingPlayersList = playersList
+            return
+        }
+
         // Clear the table
         playersTable.clear()
 
@@ -57,8 +69,20 @@ class LobbyScreen(
             if (name == playerName) {
                 // Use an existing style in the skin
                 playerLabel.style = skin.get("default", Label.LabelStyle::class.java)
+                // You might want to add some indicator that this is the current player
+                val currentPlayerIndicator = Label(" (You)", skin)
+                val playerRow = Table()
+                playerRow.add(playerLabel).left()
+                playerRow.add(currentPlayerIndicator).left()
+                playersTable.add(playerRow).fillX().height(50f).padBottom(10f).row()
+            } else {
+                playersTable.add(playerLabel).fillX().height(50f).padBottom(10f).row()
             }
-            playersTable.add(playerLabel).fillX().height(50f).padBottom(10f).row()
+        }
+
+        // If no players were added (unlikely but possible), show a message
+        if (playersList.isEmpty()) {
+            playersTable.add(Label("No players connected", skin)).padTop(20f)
         }
     }
 
@@ -78,7 +102,9 @@ class LobbyScreen(
         backButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
                 // Clean up and disconnect before going back
-                controller.disconnect()
+                if (this@LobbyScreen::controller.isInitialized) {
+                    controller.disconnect()
+                }
                 Main.instance.setScreen(CreateGameScreen())
             }
         })
@@ -119,10 +145,12 @@ class LobbyScreen(
 
         val startButton = TextButton("START", skin)
         startButton.pad(10f)
-        startButton.isDisabled = !controller.isHost() // Only the host can start the game
+        startButton.isDisabled = !isHost // Only the host can start the game
         startButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                controller.startGame()
+                if (this@LobbyScreen::controller.isInitialized) {
+                    controller.startGame()
+                }
             }
         })
 
@@ -134,8 +162,12 @@ class LobbyScreen(
         copyButton.pad(10f)
         copyButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                val code = controller.copyRoomCode()
-                showMessage("Room code copied: $code")
+                if (this@LobbyScreen::controller.isInitialized) {
+                    val code = controller.copyRoomCode()
+                    showMessage("Room code copied: $code")
+                } else {
+                    showMessage("Room code: $roomId")
+                }
             }
         })
 
@@ -147,8 +179,11 @@ class LobbyScreen(
         mainTable.add(scrollPane).expand().fill().padBottom(20f).row()
         mainTable.add(buttonsTable).fillX().padBottom(20f)
 
-        // Initial update of players
-        updatePlayersList(controller.getPlayersList())
+        // Process any pending player updates
+        pendingPlayersList?.let {
+            updatePlayersList(it)
+            pendingPlayersList = null
+        }
     }
 
     // Show a message dialog

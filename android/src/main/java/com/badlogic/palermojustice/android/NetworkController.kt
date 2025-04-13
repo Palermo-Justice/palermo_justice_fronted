@@ -17,6 +17,7 @@ class NetworkController private constructor(private val context: Context) : Fire
     private val messageHandler = MessageHandler()
     private var roomReference: DatabaseReference? = null
     private var playerReference: DatabaseReference? = null
+    private var playerId: String? = null
     private var roomListener: ValueEventListener? = null
     private var messagesListener: ChildEventListener? = null
 
@@ -63,8 +64,8 @@ class NetworkController private constructor(private val context: Context) : Fire
             val initialRoomState = mapOf(
                 "roomId" to roomId,
                 "state" to "WAITING",
-                "hostPlayerId" to "", // Will be updated after player is created
-                "players" to mapOf<String, Any>(),
+                "hostName" to hostName, // Store host name directly
+                "players" to mapOf<String, Any>(), // Empty players map initially
                 "currentPhase" to "LOBBY",
                 "settings" to roomSettings,
                 "createdAt" to ServerValue.TIMESTAMP
@@ -83,10 +84,10 @@ class NetworkController private constructor(private val context: Context) : Fire
                         if (success) {
                             Log.d(TAG, "createRoom: Host connected to room successfully")
 
-                            // Update the hostPlayerId in the room
-                            playerReference?.key?.let { playerId ->
-                                Log.d(TAG, "createRoom: Updating hostPlayerId to $playerId")
-                                roomRef.child("hostPlayerId").setValue(playerId)
+                            // Update the hostPlayerId in the room if needed
+                            playerId?.let { hostPlayerId ->
+                                Log.d(TAG, "createRoom: Updating hostPlayerId to $hostPlayerId")
+                                roomRef.child("hostPlayerId").setValue(hostPlayerId)
                                     .addOnSuccessListener {
                                         Log.d(TAG, "createRoom: Host ID updated in room")
                                         callback(roomId)
@@ -96,11 +97,8 @@ class NetworkController private constructor(private val context: Context) : Fire
                                         // Still return the room ID as the room was created
                                         callback(roomId)
                                     }
-                                    .addOnCompleteListener {
-                                        Log.d(TAG, "createRoom: hostPlayerId update operation completed")
-                                    }
                             } ?: run {
-                                Log.w(TAG, "createRoom: playerReference.key is null, cannot update hostPlayerId")
+                                Log.w(TAG, "createRoom: playerId is null, cannot update hostPlayerId")
                                 callback(roomId)
                             }
                         } else {
@@ -117,9 +115,6 @@ class NetworkController private constructor(private val context: Context) : Fire
                 .addOnFailureListener { e ->
                     Log.e(TAG, "createRoom: Failed to create room", e)
                     callback(null)
-                }
-                .addOnCompleteListener {
-                    Log.d(TAG, "createRoom: Room creation operation completed")
                 }
         } catch (e: Exception) {
             Log.e(TAG, "createRoom: Exception occurred", e)
@@ -182,8 +177,8 @@ class NetworkController private constructor(private val context: Context) : Fire
             roomReference = database.child("rooms").child(roomId)
             Log.d(TAG, "connectToRoom: Room reference created: ${roomReference?.key}")
 
-            // Add player to the room
-            val playerId = database.child("players").push().key
+            // Generate player ID
+            playerId = database.push().key
             if (playerId == null) {
                 Log.e(TAG, "connectToRoom: Failed to generate player ID")
                 callback(false)
@@ -191,27 +186,23 @@ class NetworkController private constructor(private val context: Context) : Fire
             }
             Log.d(TAG, "connectToRoom: Generated player ID: $playerId")
 
-            playerReference = database.child("players").child(playerId)
+            // Set up player reference within the room
+            playerReference = roomReference?.child("players")?.child(playerId!!)
             Log.d(TAG, "connectToRoom: Player reference created")
 
             // Create player object
             val player = mapOf(
                 "name" to playerName,
                 "isAlive" to true,
-                "role" to "PAESANO" // Default role, will be assigned by game logic
+                "role" to "PAESANO", // Default role, will be assigned by game logic
+                "joinedAt" to ServerValue.TIMESTAMP
             )
             Log.d(TAG, "connectToRoom: Player object created")
 
-            // Update database
-            val updates = hashMapOf<String, Any>(
-                "players/$playerId" to player,
-                "rooms/$roomId/players/$playerId" to true
-            )
-            Log.d(TAG, "connectToRoom: Preparing to update database with: $updates")
-
-            database.updateChildren(updates)
-                .addOnSuccessListener {
-                    Log.d(TAG, "connectToRoom: Database update successful")
+            // Add player directly to the room's players node
+            playerReference?.setValue(player)
+                ?.addOnSuccessListener {
+                    Log.d(TAG, "connectToRoom: Player added to room successfully")
                     // Start listening for room updates
                     startRoomListener(roomId)
                     // Start listening for messages
@@ -219,16 +210,10 @@ class NetworkController private constructor(private val context: Context) : Fire
                     Log.d(TAG, "connectToRoom: Calling callback with success=true")
                     callback(true)
                 }
-                .addOnFailureListener { exception ->
-                    Log.e(TAG, "connectToRoom: Database update failed", exception)
+                ?.addOnFailureListener { exception ->
+                    Log.e(TAG, "connectToRoom: Failed to add player to room", exception)
                     Log.d(TAG, "connectToRoom: Calling callback with success=false")
                     callback(false)
-                }
-                .addOnCompleteListener { task ->
-                    Log.d(TAG, "connectToRoom: Database update operation completed. Success: ${task.isSuccessful}")
-                    if (task.exception != null) {
-                        Log.e(TAG, "connectToRoom: Task exception", task.exception)
-                    }
                 }
         } catch (e: Exception) {
             Log.e(TAG, "connectToRoom: Exception occurred", e)
@@ -288,7 +273,7 @@ class NetworkController private constructor(private val context: Context) : Fire
                     val roomData = snapshot.getValue() as? Map<String, Any>
 
                     if (roomData != null) {
-                        Log.d(TAG, "startRoomListener.onDataChange: Room data parsed: $roomData")
+                        Log.d(TAG, "startRoomListener.onDataChange: Room data parsed")
 
                         // Create a GameMessage with complete room data
                         val gameMessage = GameMessage(
@@ -297,16 +282,14 @@ class NetworkController private constructor(private val context: Context) : Fire
                         )
 
                         // Send the message to the message handler
-                        Log.d(TAG, "startRoomListener.onDataChange: About to route message: $gameMessage")
+                        Log.d(TAG, "startRoomListener.onDataChange: About to route message")
                         messageHandler.routeMessage(gameMessage)
                         Log.d(TAG, "startRoomListener.onDataChange: Message routed to handler")
                     } else {
                         Log.w(TAG, "startRoomListener.onDataChange: Room data is null")
-                        Log.d(TAG, "startRoomListener.onDataChange: Snapshot value: ${snapshot.value}")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "startRoomListener.onDataChange: Error processing room data", e)
-                    Log.d(TAG, "startRoomListener.onDataChange: Snapshot value: ${snapshot.value}")
                 }
             }
 
@@ -349,7 +332,6 @@ class NetworkController private constructor(private val context: Context) : Fire
                         }
                     } else {
                         Log.w(TAG, "startMessagesListener.onChildAdded: Failed to parse message")
-                        Log.d(TAG, "startMessagesListener.onChildAdded: Snapshot: ${snapshot.value}")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "startMessagesListener.onChildAdded: Error parsing message", e)

@@ -9,7 +9,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
-import com.badlogic.palermojustice.controller.LobbyController
 
 class JoinGameScreen : Screen {
     private lateinit var stage: Stage
