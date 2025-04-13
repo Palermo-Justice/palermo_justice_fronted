@@ -94,7 +94,8 @@ class LobbyScreen(
 
         // header table
         val headerTable = Table()
-        titleLabel = Label(gameName, skin, "title")
+        val titleLabel = Label("GAME NAME", skin, "title")
+        titleLabel.setFontScale(3f)
         titleLabel.setAlignment(Align.center)
 
         // back button

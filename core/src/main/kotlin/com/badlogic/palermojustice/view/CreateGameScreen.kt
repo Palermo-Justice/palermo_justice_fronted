@@ -50,21 +50,21 @@ class CreateGameScreen : Screen {
 
         // Select players number
         val playerCountLabel = Label("Choose number of players", skin)
-        playerCountLabel.setFontScale(1.2f)
+        playerCountLabel.setFontScale(3f)
         mainTable.add(playerCountLabel).left().padBottom(10f).row()
 
-        playerCountSelectBox = SelectBox<String>(skin)
+        playerCountSelectBox = SelectBox<String>(skin, "big")
         playerCountSelectBox.setItems("3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
         playerCountSelectBox.selected = "5"
-        mainTable.add(playerCountSelectBox).left().width(100f).height(50f).padBottom(30f).row()
+        mainTable.add(playerCountSelectBox).left().width(200f).height(80f).padBottom(30f).row()
 
         // Player name field
         val playerNameLabel = Label("My player name", skin)
-        playerNameLabel.setFontScale(1.2f)
+        playerNameLabel.setFontScale(3f)
         mainTable.add(playerNameLabel).left().padBottom(10f).row()
 
         playerNameField = TextField("", skin)
-        mainTable.add(playerNameField).fillX().height(50f).padBottom(50f).row()
+        mainTable.add(playerNameField).fillX().height(100f).padBottom(50f).row()
 
         // Lower buttons
         val buttonsTable = Table()

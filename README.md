@@ -33,4 +33,5 @@ Useful Gradle tasks and flags:
 
 - ## Developments
 - @pantaleo -> addedd Player.kt class to list the roles (core/src/main/kotlin/com/badlogic/palermojustice/model/Player.kt)
+- @niklas -> Added github actions
 
