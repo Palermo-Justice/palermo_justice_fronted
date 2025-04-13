@@ -5,5 +5,6 @@ interface FirebaseInterface {
     fun createRoom(hostName: String, roomSettings: Map<String, Any>, callback: (String?) -> Unit)
     fun sendMessage(messageType: String, data: Map<String, Any>)
     fun listenForGameUpdates(updateCallback: (Map<String, Any>) -> Unit)
+    fun getRoomInfo(roomId: String, callback: (Map<String, Any>?) -> Unit)
     fun disconnect()
 }

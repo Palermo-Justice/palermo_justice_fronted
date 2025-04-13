@@ -16,6 +16,8 @@ class JoinGameScreen : Screen {
     private lateinit var skin: Skin
     private lateinit var roomCodeField: TextField
     private lateinit var playerNameField: TextField
+    private var loadingDialog: Dialog? = null
+    private var pendingTransition: (() -> Unit)? = null
 
     override fun show() {
         stage = Stage(ScreenViewport())
@@ -70,36 +72,55 @@ class JoinGameScreen : Screen {
         joinButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
                 // Retrieve UI data
-                val roomCode = roomCodeField.text
-                val playerName = playerNameField.text
+                val roomCode = roomCodeField.text.trim().uppercase()
+                val playerName = playerNameField.text.trim()
 
                 if (roomCode.isBlank() || playerName.isBlank()) {
                     showErrorDialog("Please fill in all required fields")
                     return
                 }
 
-                val loadingDialog = showLoadingDialog("Joining game...")
+                loadingDialog = showLoadingDialog("Joining game...")
 
-                // Create a controller just for joining
-                val controller = LobbyController(
-                    Main.instance.firebaseInterface,
-                    roomCode,
-                    playerName,
-                    false
-                )
+                // First check if the room exists
+                Main.instance.firebaseInterface.getRoomInfo(roomCode) { roomInfo ->
+                    if (roomInfo == null) {
+                        Gdx.app.postRunnable {
+                            loadingDialog?.hide()
+                            showErrorDialog("Room not found. Please check the code and try again.")
+                        }
+                        return@getRoomInfo
+                    }
 
-                controller.joinRoom(roomCode, playerName) { success ->
-                    Gdx.app.postRunnable {
-                        loadingDialog.hide()
-
+                    // Room exists, now try to connect
+                    Main.instance.firebaseInterface.connectToRoom(roomCode, playerName) { success ->
                         if (success) {
-                            Main.instance.setScreen(LobbyScreen(
-                                roomId = roomCode,
-                                playerName = playerName,
-                                isHost = false
-                            ))
+                            // Get the game name if possible
+                            val gameName = if (roomInfo.containsKey("settings")) {
+                                val settings = roomInfo["settings"] as? Map<*, *>
+                                settings?.get("name") as? String ?: "Game Room"
+                            } else {
+                                "Game Room"
+                            }
+
+                            // Schedule transition for the next render cycle
+                            Gdx.app.postRunnable {
+                                loadingDialog?.hide()
+                                // Don't transition immediately - wait for next render cycle
+                                pendingTransition = {
+                                    Main.instance.setScreen(LobbyScreen(
+                                        roomId = roomCode,
+                                        playerName = playerName,
+                                        isHost = false,
+                                        gameName = gameName
+                                    ))
+                                }
+                            }
                         } else {
-                            showErrorDialog("Failed to join game. Please check the room code and try again.")
+                            Gdx.app.postRunnable {
+                                loadingDialog?.hide()
+                                showErrorDialog("Failed to join room. It may be full or game already started.")
+                            }
                         }
                     }
                 }
@@ -133,6 +154,12 @@ class JoinGameScreen : Screen {
 
         stage.act(delta)
         stage.draw()
+
+        // Check if we have a pending transition and execute it
+        pendingTransition?.let {
+            it.invoke()
+            pendingTransition = null
+        }
     }
 
     override fun resize(width: Int, height: Int) {

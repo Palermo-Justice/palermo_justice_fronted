@@ -4,8 +4,6 @@ import com.badlogic.palermojustice.controller.GameMessage
 import com.badlogic.palermojustice.controller.MessageHandler
 import com.badlogic.palermojustice.controller.MessageType
 import com.badlogic.palermojustice.firebase.FirebaseInterface
-import com.badlogic.palermojustice.model.GameModel
-import com.badlogic.palermojustice.model.GameState
 import android.content.Context
 import android.util.Log
 import com.google.firebase.database.*
@@ -64,7 +62,7 @@ class NetworkController private constructor(private val context: Context) : Fire
             // Create initial room state as a Map
             val initialRoomState = mapOf(
                 "roomId" to roomId,
-                "state" to GameState.WAITING.name,
+                "state" to "WAITING",
                 "hostPlayerId" to "", // Will be updated after player is created
                 "players" to mapOf<String, Any>(),
                 "currentPhase" to "LOBBY",
@@ -138,6 +136,43 @@ class NetworkController private constructor(private val context: Context) : Fire
         return (1..length)
             .map { allowedChars.random() }
             .joinToString("")
+    }
+
+    /**
+     * Gets information about a room by its ID
+     * @param roomId The ID of the room to check
+     * @param callback Callback with room data if it exists, null otherwise
+     */
+    override fun getRoomInfo(roomId: String, callback: (Map<String, Any>?) -> Unit) {
+        Log.d(TAG, "getRoomInfo: Checking if room $roomId exists")
+        try {
+            database.child("rooms").child(roomId).addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        Log.d(TAG, "getRoomInfo: Room exists")
+                        try {
+                            @Suppress("UNCHECKED_CAST")
+                            val roomData = snapshot.getValue() as? Map<String, Any>
+                            callback(roomData)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "getRoomInfo: Error casting data", e)
+                            callback(null)
+                        }
+                    } else {
+                        Log.d(TAG, "getRoomInfo: Room does not exist")
+                        callback(null)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "getRoomInfo: Error checking room", error.toException())
+                    callback(null)
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "getRoomInfo: Exception occurred", e)
+            callback(null)
+        }
     }
 
     override fun connectToRoom(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
@@ -217,9 +252,11 @@ class NetworkController private constructor(private val context: Context) : Fire
         messageHandler.registerCallback(MessageType.GAME_STATE_UPDATE) { message ->
             Log.d(TAG, "listenForGameUpdates: Received GAME_STATE_UPDATE message")
             try {
+                @Suppress("UNCHECKED_CAST")
                 val payloadMap = message.payload as? Map<String, Any> ?:
                 messageHandler.json.toJson(message.payload).let {
                     Log.d(TAG, "listenForGameUpdates: Converting payload using JSON")
+                    @Suppress("UNCHECKED_CAST")
                     messageHandler.json.fromJson(Map::class.java, it) as Map<String, Any>
                 }
 
@@ -246,19 +283,20 @@ class NetworkController private constructor(private val context: Context) : Fire
             override fun onDataChange(snapshot: DataSnapshot) {
                 Log.d(TAG, "startRoomListener.onDataChange: Received data change for room")
                 try {
-                    // Ottieni tutti i dati come Map
+                    // Get all data as Map
+                    @Suppress("UNCHECKED_CAST")
                     val roomData = snapshot.getValue() as? Map<String, Any>
 
                     if (roomData != null) {
                         Log.d(TAG, "startRoomListener.onDataChange: Room data parsed: $roomData")
 
-                        // Crea un GameMessage con i dati completi della stanza
+                        // Create a GameMessage with complete room data
                         val gameMessage = GameMessage(
                             type = MessageType.GAME_STATE_UPDATE,
                             payload = roomData
                         )
 
-                        // Invia il messaggio al message handler
+                        // Send the message to the message handler
                         Log.d(TAG, "startRoomListener.onDataChange: About to route message: $gameMessage")
                         messageHandler.routeMessage(gameMessage)
                         Log.d(TAG, "startRoomListener.onDataChange: Message routed to handler")
@@ -285,32 +323,36 @@ class NetworkController private constructor(private val context: Context) : Fire
     private fun startMessagesListener(roomId: String) {
         Log.d(TAG, "startMessagesListener: Setting up messages listener for room $roomId")
         val messagesRef = database.child("rooms").child(roomId).child("messages")
-        //Log.d(TAG, "startMessagesListener: Messages reference path: ${messagesRef.path}")
 
         messagesListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 Log.d(TAG, "startMessagesListener.onChildAdded: New message detected")
-                val message = snapshot.getValue(FirebaseMessage::class.java)
-                if (message != null) {
-                    Log.d(TAG, "startMessagesListener.onChildAdded: Message parsed successfully. Type: ${message.type}")
-                    // Convert Firebase message to GameMessage
-                    try {
-                        val gameMessage = GameMessage(
-                            type = MessageType.valueOf(message.type),
-                            payload = message.data
-                        )
-                        messageHandler.routeMessage(gameMessage)
-                        Log.d(TAG, "startMessagesListener.onChildAdded: Message routed to handler")
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    val message = snapshot.getValue(FirebaseMessage::class.java)
+                    if (message != null) {
+                        Log.d(TAG, "startMessagesListener.onChildAdded: Message parsed successfully. Type: ${message.type}")
+                        // Convert Firebase message to GameMessage
+                        try {
+                            val gameMessage = GameMessage(
+                                type = MessageType.valueOf(message.type),
+                                payload = message.data
+                            )
+                            messageHandler.routeMessage(gameMessage)
+                            Log.d(TAG, "startMessagesListener.onChildAdded: Message routed to handler")
 
-                        // Optional: remove messages after processing
-                        snapshot.ref.removeValue()
-                        Log.d(TAG, "startMessagesListener.onChildAdded: Message removed from database after processing")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "startMessagesListener.onChildAdded: Error processing message", e)
+                            // Optional: remove messages after processing
+                            snapshot.ref.removeValue()
+                            Log.d(TAG, "startMessagesListener.onChildAdded: Message removed from database after processing")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "startMessagesListener.onChildAdded: Error processing message", e)
+                        }
+                    } else {
+                        Log.w(TAG, "startMessagesListener.onChildAdded: Failed to parse message")
+                        Log.d(TAG, "startMessagesListener.onChildAdded: Snapshot: ${snapshot.value}")
                     }
-                } else {
-                    Log.w(TAG, "startMessagesListener.onChildAdded: Failed to parse message")
-                    Log.d(TAG, "startMessagesListener.onChildAdded: Snapshot: ${snapshot.value}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "startMessagesListener.onChildAdded: Error parsing message", e)
                 }
             }
 

@@ -90,11 +90,41 @@ class LobbyController(
 
     // Join an existing room
     fun joinRoom(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
-        networkController.connectToRoom(roomId, playerName, callback)
+        // First check if the room exists
+        networkController.getRoomInfo(roomId) { roomData ->
+            if (roomData == null) {
+                // Room doesn't exist
+                callback(false)
+                return@getRoomInfo
+            }
+
+            // Room exists, check if it's in a joinable state
+            val state = roomData["state"] as? String
+            if (state != null && state != "WAITING" && state != "LOBBY") {
+                // Room is not in a joinable state (game already started)
+                callback(false)
+                return@getRoomInfo
+            }
+
+            // Check if the room is full
+            val settings = roomData["settings"] as? Map<*, *>
+            val maxPlayers = settings?.get("maxPlayers") as? Number ?: 5
+            val players = roomData["players"] as? Map<*, *> ?: mapOf<String, Any>()
+
+            if (players.size >= maxPlayers.toInt()) {
+                // Room is full
+                callback(false)
+                return@getRoomInfo
+            }
+
+            // Room exists and is joinable, so connect to it
+            networkController.connectToRoom(roomId, playerName, callback)
+        }
     }
 
     // Copy room code to clipboard - platform specific implementation required
     fun copyRoomCode(): String {
         return roomId
     }
+
 }
