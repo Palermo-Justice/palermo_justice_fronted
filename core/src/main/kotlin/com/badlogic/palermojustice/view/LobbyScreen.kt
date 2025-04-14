@@ -13,6 +13,7 @@ import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.controller.LobbyController
 import com.badlogic.palermojustice.model.GameModel
 import com.badlogic.palermojustice.model.GameState
+import com.badlogic.palermojustice.model.Mafioso
 import com.badlogic.palermojustice.model.Paesano
 import com.badlogic.palermojustice.model.Player
 
@@ -75,6 +76,7 @@ class LobbyScreen(
         testPlayersList.add("Alice")
         testPlayersList.add("Bob")
         testPlayersList.add("Charlie")
+        testPlayersList.add("Spongebob")
 
         // Also add to GameState for gameplay testing
         GameState.players.clear()
@@ -97,6 +99,11 @@ class LobbyScreen(
             id = "3"
             name = "Charlie"
             role = Paesano()
+        })
+        GameState.players.add(Player().apply {
+            id = "4"
+            name = "Spongebob"
+            role = Mafioso()
         })
 
         // Randomize roles for testing
