@@ -217,13 +217,10 @@ class GameScreen(
                 // Trigger transition after ~7 seconds
                 if (elapsed >= 7f) {
                     roleAnimationComplete = true
-
-                    // Semplifichiamo questa parte usando direttamente mainTable
-                    // invece di cercare l'attore per nome
                     stage.addAction(Actions.sequence(
                         Actions.fadeOut(0.5f),
                         Actions.run {
-                            createGameUI(mainTable)  // Usiamo direttamente la referenza mainTable
+                            Main.instance.setScreen(RoleAssignmentScreen())
                         },
                         Actions.fadeIn(0.5f)
                     ))
