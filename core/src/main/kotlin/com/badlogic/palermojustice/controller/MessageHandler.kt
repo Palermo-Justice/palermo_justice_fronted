@@ -1,9 +1,6 @@
 package com.badlogic.palermojustice.controller
 
 import com.badlogic.gdx.utils.Json
-import com.badlogic.palermojustice.model.GameModel
-import com.badlogic.palermojustice.model.GameState
-import com.badlogic.palermojustice.model.Role
 import java.util.concurrent.ConcurrentHashMap
 
 enum class MessageType {
