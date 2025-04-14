@@ -25,6 +25,7 @@ class GameScreen(
     private lateinit var phaseLabel: Label
     private lateinit var statusLabel: Label
     private lateinit var waitingLabel: Label
+    private lateinit var mainTable: Table  // Aggiungiamo un riferimento alla tabella principale
     private var playerRole: String = "Unknown"
     private var currentPhase: String = "Waiting"
 
@@ -99,8 +100,9 @@ class GameScreen(
 
     private fun createUI() {
         // main table for the entire screen
-        val mainTable = Table()
+        mainTable = Table()  // Inizializziamo la variabile mainTable
         mainTable.setFillParent(true)
+        mainTable.name = "mainTable"  // Assegniamo un nome per poterla recuperare
         stage.addActor(mainTable)
 
         if (showRoleAnimation) {
@@ -110,9 +112,9 @@ class GameScreen(
         }
     }
 
-    private fun createRoleAnimationUI(mainTable: Table) {
+    private fun createRoleAnimationUI(table: Table) {
         // Clear table if needed
-        mainTable.clear()
+        table.clear()
 
         // Role Animation UI based on colleague's code
         val titleLabel = Label("YOU ARE...", skin, "title")
@@ -126,10 +128,10 @@ class GameScreen(
         nameLabel.color.a = 0f
         waitingLabel.color.a = 0f
 
-        mainTable.add(titleLabel).padBottom(20f).row()
-        mainTable.add(roleLabel).padBottom(40f).row()
-        mainTable.add(nameLabel).padBottom(40f).row()
-        mainTable.add(waitingLabel).padTop(40f).row()
+        table.add(titleLabel).padBottom(20f).row()
+        table.add(roleLabel).padBottom(40f).row()
+        table.add(nameLabel).padBottom(40f).row()
+        table.add(waitingLabel).padTop(40f).row()
 
         // Fade in animations
         titleLabel.addAction(Actions.fadeIn(1f))
@@ -142,9 +144,9 @@ class GameScreen(
         phaseLabel = Label(currentPhase, skin, "title")
     }
 
-    private fun createGameUI(mainTable: Table) {
+    private fun createGameUI(table: Table) {
         // Clear table if needed
-        mainTable.clear()
+        table.clear()
 
         // header table with room info
         val headerTable = Table()
@@ -185,49 +187,55 @@ class GameScreen(
         })
 
         // put all elements in the main table
-        mainTable.add(headerTable).fillX().padTop(10f).padBottom(20f).row()
-        mainTable.add(roleLabel).fillX().padBottom(10f).row()
-        mainTable.add(statusLabel).fillX().padBottom(20f).row()
-        mainTable.add(phaseTable).fillX().padBottom(20f).row()
-        mainTable.add(actionsTable).fillX().expandY().top().padBottom(20f).row()
-        mainTable.add(leaveButton).width(150f).padBottom(20f)
+        table.add(headerTable).fillX().padTop(10f).padBottom(20f).row()
+        table.add(roleLabel).fillX().padBottom(10f).row()
+        table.add(statusLabel).fillX().padBottom(20f).row()
+        table.add(phaseTable).fillX().padBottom(20f).row()
+        table.add(actionsTable).fillX().expandY().top().padBottom(20f).row()
+        table.add(leaveButton).width(150f).padBottom(20f)
     }
 
     override fun render(delta: Float) {
         Gdx.gl.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
-        if (showRoleAnimation && !roleAnimationComplete) {
-            // Handle role animation logic
-            elapsed += delta
+        try {
+            if (showRoleAnimation && !roleAnimationComplete) {
+                // Handle role animation logic
+                elapsed += delta
 
-            // Start showing dots only after 3.5 seconds
-            if (elapsed >= 3.5f) {
-                dotsStarted = true
+                // Start showing dots only after 3.5 seconds
+                if (elapsed >= 3.5f) {
+                    dotsStarted = true
+                }
+
+                if (dotsStarted && elapsed >= 3.5f + dotCount * 0.5f) {
+                    dotCount = (dotCount % 3) + 1
+                    waitingLabel.setText("Continuing" + ".".repeat(dotCount))
+                }
+
+                // Trigger transition after ~7 seconds
+                if (elapsed >= 7f) {
+                    roleAnimationComplete = true
+
+                    // Semplifichiamo questa parte usando direttamente mainTable
+                    // invece di cercare l'attore per nome
+                    stage.addAction(Actions.sequence(
+                        Actions.fadeOut(0.5f),
+                        Actions.run {
+                            createGameUI(mainTable)  // Usiamo direttamente la referenza mainTable
+                        },
+                        Actions.fadeIn(0.5f)
+                    ))
+                }
             }
 
-            if (dotsStarted && elapsed >= 3.5f + dotCount * 0.5f) {
-                dotCount = (dotCount % 3) + 1
-                waitingLabel.setText("Continuing" + ".".repeat(dotCount))
-            }
-
-            // Trigger transition after ~7 seconds
-            if (elapsed >= 7f) {
-                roleAnimationComplete = true
-
-                // Fade out animation UI and show game UI
-                stage.addAction(Actions.sequence(
-                    Actions.fadeOut(0.5f),
-                    Actions.run {
-                        createGameUI(stage.root.findActor("mainTable") as Table)
-                    },
-                    Actions.fadeIn(0.5f)
-                ))
-            }
+            stage.act(delta)
+            stage.draw()
+        } catch (e: Exception) {
+            // Log any exception for debugging
+            Gdx.app.error("GameScreen", "Error during rendering: ${e.message}", e)
         }
-
-        stage.act(delta)
-        stage.draw()
     }
 
     override fun resize(width: Int, height: Int) {
@@ -310,7 +318,7 @@ class GameScreen(
     fun skipRoleAnimation() {
         if (!roleAnimationComplete && showRoleAnimation) {
             roleAnimationComplete = true
-            createGameUI(stage.root.findActor("mainTable") as Table)
+            createGameUI(mainTable)  // Usiamo direttamente la referenza mainTable
         }
     }
 }
