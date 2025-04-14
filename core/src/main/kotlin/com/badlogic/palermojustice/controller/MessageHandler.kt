@@ -40,10 +40,13 @@ class MessageHandler {
     }
 
     fun routeMessage(message: GameMessage) {
+        // Log the message type for debugging
+        println("Routing message of type: ${message.type}")
+
         when (message.type) {
             MessageType.GAME_STATE_UPDATE -> {
                 try {
-                    println("Payload: ${message.payload}")
+                    println("Handling GAME_STATE_UPDATE. Payload: ${message.payload}")
 
                     val payloadJson = json.toJson(message.payload)
                     println("Payload JSON: $payloadJson")
@@ -53,38 +56,61 @@ class MessageHandler {
                         return
                     }
 
-                    val gameState = try {
-                        json.fromJson(GameState::class.java, payloadJson)
-                    } catch (e: Exception) {
-                        println("Error converting payload to GameState: ${e.message}")
-                        null
-                    }
+                    // Here we're just logging instead of trying to parse the GameState
+                    // Until full implementation is done
+                    println("GAME_STATE_UPDATE received with payload: $payloadJson")
 
-                    if (gameState == null) {
-                        println("Converted GameState is null!")
-                        return
-                    }
-
-                    //gameController.updateGameState(gameState)
+                    // Instead of trying to parse it to GameState directly, we'll just forward
+                    // the callback for now
                 } catch (e: Exception) {
-                    println("Error in routeMessage: ${e.message}")
+                    println("Error in routeMessage (GAME_STATE_UPDATE): ${e.message}")
                     e.printStackTrace()
                 }
             }
-            MessageType.JOIN_ROOM -> TODO()
-            MessageType.LEAVE_ROOM -> TODO()
-            MessageType.START_GAME -> TODO()
-            MessageType.PLAYER_ACTION -> TODO()
-            MessageType.VOTE -> TODO()
-            MessageType.ROLE_ASSIGNMENT -> TODO()
-            MessageType.CHAT_MESSAGE -> TODO()
+            MessageType.JOIN_ROOM -> {
+                // Basic implementation to avoid TODO() exception
+                println("JOIN_ROOM message received. This is not fully implemented yet.")
+                // Actual implementation would handle player joining a room
+            }
+            MessageType.LEAVE_ROOM -> {
+                // Basic implementation to avoid TODO() exception
+                println("LEAVE_ROOM message received. This is not fully implemented yet.")
+                // Actual implementation would handle player leaving a room
+            }
+            MessageType.START_GAME -> {
+                // Basic implementation to avoid TODO() exception
+                println("START_GAME message received. This is not fully implemented yet.")
+                // Actual implementation would handle game start logic
+            }
+            MessageType.PLAYER_ACTION -> {
+                // Basic implementation to avoid TODO() exception
+                println("PLAYER_ACTION message received. This is not fully implemented yet.")
+                // Actual implementation would handle player actions during the game
+            }
+            MessageType.VOTE -> {
+                // Basic implementation to avoid TODO() exception
+                println("VOTE message received. This is not fully implemented yet.")
+                // Actual implementation would handle voting logic
+            }
+            MessageType.ROLE_ASSIGNMENT -> {
+                // Basic implementation to avoid TODO() exception
+                println("ROLE_ASSIGNMENT message received. This is not fully implemented yet.")
+                // Actual implementation would handle role assignment
+            }
+            MessageType.CHAT_MESSAGE -> {
+                // Basic implementation to avoid TODO() exception
+                println("CHAT_MESSAGE message received. This is not fully implemented yet.")
+                // Actual implementation would handle chat messages
+            }
         }
 
+        // Call registered callbacks for this message type
         callbacks[message.type]?.forEach { callback ->
             try {
                 callback(message)
             } catch (e: Exception) {
                 println("Error executing callback: ${e.message}")
+                e.printStackTrace()
             }
         }
     }

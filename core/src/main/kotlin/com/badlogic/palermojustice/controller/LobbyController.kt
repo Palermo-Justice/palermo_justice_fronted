@@ -18,6 +18,11 @@ class LobbyController(
     init {
         // Add current player to the list
         playersList.add(playerName)
+        playersList.add("player2")
+        playersList.add("player3")
+        playersList.add("player4")
+        playersList.add("player5")
+
     }
 
     // Method to connect the view to the controller
