@@ -14,7 +14,7 @@ object GameState {
         val roles = listOf(
             Mafioso(),
             Ispettore(),
-            Paesano(),
+            Sgarrista(),
             Paesano()
             // Add or remove based on player count
         ).shuffled()

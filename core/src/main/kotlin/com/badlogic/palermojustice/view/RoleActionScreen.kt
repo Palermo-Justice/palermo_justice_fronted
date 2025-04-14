@@ -53,7 +53,7 @@ class RoleActionScreen : Screen {
         GameState.players.forEachIndexed { index, player ->
             val aliveStatus = if (player.isAlive) "Alive" else "Dead"
             val buttonText = "${player.name}\n${player.role.name} - $aliveStatus"
-            val playerButton = TextButton(buttonText, skin)
+            val playerButton = TextButton(buttonText, skin, "select_player")
 
             playerButton.addListener {
                 selectedPlayerId[0] = player.id
@@ -61,7 +61,7 @@ class RoleActionScreen : Screen {
                 true
             }
 
-            playerGrid.add(playerButton).width(150f).height(80f).pad(5f)
+            playerGrid.add(playerButton).width(150f).height(150f).pad(5f)
             if ((index + 1) % 3 == 0) playerGrid.row() // new row every 3 buttons
         }
 

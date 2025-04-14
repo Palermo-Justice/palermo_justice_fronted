@@ -1,4 +1,5 @@
 package com.badlogic.palermojustice.model
+import com.badlogic.gdx.Gdx
 import com.mygame.model.com.badlogic.palermojustice.Player
 
 abstract class Role(val name: String) {
@@ -16,7 +17,8 @@ class Mafioso : Role("Mafioso") {
             println("${target.name} was protected!")
         } else {
             target.isAlive = false
-            println("${target.name} was killed!")
+            Gdx.app.log("Mafioso", "Killed ${target.name}")
+            Gdx.app.log("Mafioso", "Remaining players: ${players.filter { it.isAlive }.joinToString { it.name }}")
         }
     }
 }

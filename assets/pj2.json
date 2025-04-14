@@ -47,7 +47,16 @@
       down: button_px_pressed
       over: button_px_pressed
     }
-  }
+    select_player: {
+      up: square1
+      down: square2
+      over: square2
+      checked: square2
+    },
+    dead_player: {
+      up: square3
+    }
+  },
   com.badlogic.gdx.scenes.scene2d.ui.CheckBox$CheckBoxStyle: {
     default: {
       checkboxOn: checkbox_on_px
@@ -188,6 +197,19 @@
       up: button_px_normal
       down: button_px_pressed
       over: button_px_pressed
+    },
+    select_player: {
+      font: button
+      fontColor: black,
+      up: square1
+      down: square2
+      over: square2,
+      checked: square2
+    },
+    dead_player: {
+      font: button
+      fontColor: black
+      up: square3
     }
   }
   com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle: {
