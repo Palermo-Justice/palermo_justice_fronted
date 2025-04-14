@@ -9,6 +9,7 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.model.GameState
+import com.badlogic.palermojustice.model.Role
 
 class RoleActionScreen : Screen {
     private lateinit var stage: Stage
@@ -28,51 +29,62 @@ class RoleActionScreen : Screen {
         mainTable.setFillParent(true)
         stage.addActor(mainTable)
 
-        // Header
-        val titleLabel = Label("YOU ARE...", skin, "title")
-        titleLabel.setAlignment(Align.center)
-        mainTable.add(titleLabel).expandX().align(Align.center).padBottom(20f).row()
-
         // Get current role and player
         val currentRole = GameState.roleSequence[GameState.currentRoleIndex]
-        val currentPlayer = GameState.getPlayerByRole(currentRole)
+        val currentPlayer = GameState.players.firstOrNull {
+            it.role.name  == currentRole
+        }
+        // Instruction label
+        val instructionText = currentPlayer?.role?.description ?: "No action"
+        val instructionLabel = Label(instructionText, skin, "default")
+        val titleLabel = Label(currentRole, skin, "title")
 
-        // Role label
-        val roleLabel = Label(currentRole, skin, "default")
-        roleLabel.setAlignment(Align.center)
-        mainTable.add(roleLabel).expandX().align(Align.center).padBottom(40f).row()
+
+        instructionLabel.setAlignment(Align.center)
+        mainTable.add(titleLabel). padBottom(40f).row()
+        mainTable.add(instructionLabel).padBottom(20f).row()
 
         // Player selection list
-        val list = List<String>(skin)
-        list.setItems(*GameState.players.map { it.name }.toTypedArray())
-        val scrollPane = ScrollPane(list, skin)
-        mainTable.add(scrollPane).width(300f).height(200f).padBottom(20f).row()
+        val playerGrid = Table()
+        playerGrid.defaults().pad(10f).width(150f).height(100f)
+
+        val selectedPlayerId = arrayOf<String?>(null) // mutable holder for selected player
+
+        GameState.players.forEachIndexed { index, player ->
+            val aliveStatus = if (player.isAlive) "Alive" else "Dead"
+            val buttonText = "${player.name}\n${player.role.name} - $aliveStatus"
+            val playerButton = TextButton(buttonText, skin)
+
+            playerButton.addListener {
+                selectedPlayerId[0] = player.id
+                println("Selected player: ${player.name}")
+                true
+            }
+
+            playerGrid.add(playerButton).width(150f).height(80f).pad(5f)
+            if ((index + 1) % 3 == 0) playerGrid.row() // new row every 3 buttons
+        }
+
+
+        mainTable.add(playerGrid).padBottom(20f).row()
 
         // Confirm button
         val confirmButton = TextButton("Confirm", skin)
         confirmButton.addListener {
-            val selectedName = list.selected
-            val targetPlayer = GameState.players.find { it.name == selectedName }
+            val targetPlayer = GameState.players.find { it.id == selectedPlayerId[0] }
 
-            // If no player is selected, return early with false
-            if (targetPlayer == null) {
+            if (targetPlayer == null || currentPlayer == null || currentPlayer.role.name != currentRole) {
                 return@addListener false
             }
-            // If this player actually has the role, perform the action
-            //currentPlayer?.let {
-               // if (it.role.name == currentRole) {
-               //     it.role.performAction(GameState.players, targetPlayer)
-               // }
-            //}
 
-            // Move to the next role
+            currentPlayer.role.performAction(GameState.players, targetPlayer)
+
             GameState.currentRoleIndex++
 
-            // If all roles have acted, end phase; otherwise, go to next role
             if (GameState.currentRoleIndex < GameState.roleSequence.size) {
-                Main.instance.setScreen(LobbyScreen())
+                Main.instance.setScreen(RoleActionScreen())
             } else {
-                Main.instance.setScreen(LobbyScreen())
+                Main.instance.setScreen(LobbyScreen()) // or next phase
             }
 
             true

@@ -11,6 +11,11 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
+import com.badlogic.palermojustice.controller.GameController
+import com.badlogic.palermojustice.model.GameState
+import com.badlogic.palermojustice.model.Paesano
+import com.badlogic.palermojustice.model.Role
+import com.mygame.model.com.badlogic.palermojustice.Player
 
 class LobbyScreen : Screen {
     private lateinit var stage: Stage
@@ -64,11 +69,15 @@ class LobbyScreen : Screen {
         })
 
         val startButton = TextButton("START", skin)
+        GameState.players.add(Player("1", "Alice", Paesano()))
+        GameState.players.add(Player("2", "Alice1", Paesano()))
+        GameState.players.add(Player("3", "Alice2", Paesano()))
+        GameState.players.add(Player("4", "Alice3", Paesano()))
+        GameState.assignRoles()
         startButton.pad(10f)
         startButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-
-                Main.instance.setScreen(RoleActionScreen())
+                GameController.showRoleScreensForAllPlayers()
             }
         })
 
