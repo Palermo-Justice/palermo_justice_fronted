@@ -1,5 +1,5 @@
 package com.badlogic.palermojustice.model
-
+import com.badlogic.palermojustice.model.Role
 import java.util.ArrayList
 
 enum class GamePhase {
@@ -11,31 +11,26 @@ enum class GamePhase {
     NIGHT
 }
 
-enum class GameState {
+enum class GameStatus {
     WAITING,
     RUNNING,
     FINISHED
 }
 
-//This may be redundant. TODO: understand if to put Role here or in a separate classe (Player.kt)
-enum class Role {
-    MAFIOSO,
-    PAESANO,
-    ISPETTORE,
-    SGARRISTA,
-    IL_PRETE,
-    PENTITO,
-    TRUFFATORE
-}
-
 class Player {
+    var id: String = ""
     var name: String = ""
     var role: Role? = null
     var isAlive: Boolean = true
+    var isProtected: Boolean = false
 
-    /*fun getRole(): Role? {
-        return role
-    }*/
+    constructor()
+
+    constructor(id: String, name: String, role: Role? = null) {
+        this.id = id
+        this.name = name
+        this.role = role
+    }
 
     fun die() {
         isAlive = false
@@ -46,7 +41,7 @@ class GameModel {
     // Attributes
     private val players: MutableList<Player> = ArrayList()
     private var currentPhase: GamePhase = GamePhase.LOBBY
-    private var gameState: GameState = GameState.WAITING
+    private var gameStatus: GameStatus = GameStatus.WAITING
 
     // Attributes necessary for the game
     var roomId: String = ""
@@ -61,8 +56,8 @@ class GameModel {
         return currentPhase
     }
 
-    fun updateGameState(newState: GameState) {
-        gameState = newState
+    fun updateGameState(newState: GameStatus) {
+        gameStatus = newState
     }
 
 
@@ -82,20 +77,20 @@ class GameModel {
         return players.filter { it.isAlive }
     }
 
-    fun getMafiosi(): List<Player> {
-        return players.filter { it.role == Role.MAFIOSO && it.isAlive }
-    }
-
-    fun getCitizens(): List<Player> {
-        return players.filter { it.role != Role.MAFIOSO && it.isAlive }
-    }
+//    fun getMafiosi(): List<Player> {
+//        return players.filter { it.role == Mafioso && it.isAlive }
+//    }
+//
+//    fun getCitizens(): List<Player> {
+//        return players.filter { it.role != Mafioso && it.isAlive }
+//    }
 
     fun setPhase(phase: GamePhase) {
         currentPhase = phase
     }
 
     fun isGameOver(): Boolean {
-        return gameState == GameState.FINISHED
+        return gameStatus == GameStatus.FINISHED
     }
 
     // Method to update model based on server status

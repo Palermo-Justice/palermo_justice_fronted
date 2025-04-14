@@ -11,6 +11,10 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.controller.LobbyController
+import com.badlogic.palermojustice.model.GameModel
+import com.badlogic.palermojustice.model.GameState
+import com.badlogic.palermojustice.model.Paesano
+import com.badlogic.palermojustice.model.Player
 
 class LobbyScreen(
     private val roomId: String,
@@ -30,12 +34,21 @@ class LobbyScreen(
     // Controller for logic
     private lateinit var controller: LobbyController
 
+    // Test players list for offline testing
+    private val testPlayersList = mutableListOf<String>()
+    private val useTestPlayers = true // Set to false to use real Firebase data
+
     override fun show() {
         // First initialize the UI
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
         skin = Skin(Gdx.files.internal("pj2.json"))
+
+        // Create test players for UI testing
+        if (useTestPlayers) {
+            setupTestPlayers()
+        }
 
         // Create UI before controller initialization
         createUI()
@@ -48,6 +61,46 @@ class LobbyScreen(
             isHost
         )
         controller.setView(this)
+
+        // If using test players, immediately update UI with them
+        if (useTestPlayers) {
+            updatePlayersList(testPlayersList)
+        }
+    }
+
+    private fun setupTestPlayers() {
+        // Add test players
+        testPlayersList.clear()
+        testPlayersList.add(playerName) // Current player
+        testPlayersList.add("Alice")
+        testPlayersList.add("Bob")
+        testPlayersList.add("Charlie")
+
+        // Also add to GameState for gameplay testing
+        GameState.players.clear()
+        GameState.players.add(Player().apply {
+            id = "0"
+            name = playerName
+            role = Paesano()
+        })
+        GameState.players.add(Player().apply {
+            id = "1"
+            name = "Alice"
+            role = Paesano()
+        })
+        GameState.players.add(Player().apply {
+            id = "2"
+            name = "Bob"
+            role = Paesano()
+        })
+        GameState.players.add(Player().apply {
+            id = "3"
+            name = "Charlie"
+            role = Paesano()
+        })
+
+        // Randomize roles for testing
+        GameState.assignRoles()
     }
 
     // Update player list in UI
@@ -94,7 +147,7 @@ class LobbyScreen(
 
         // header table
         val headerTable = Table()
-        val titleLabel = Label("GAME NAME", skin, "title")
+        titleLabel = Label(gameName, skin, "title")
         titleLabel.setFontScale(3f)
         titleLabel.setAlignment(Align.center)
 
@@ -151,6 +204,9 @@ class LobbyScreen(
             override fun changed(event: ChangeEvent, actor: Actor) {
                 if (this@LobbyScreen::controller.isInitialized) {
                     controller.startGame()
+                } else if (useTestPlayers) {
+                    // Per test in offline mode
+                    navigateToGameScreen(roomId, playerName, isHost)
                 }
             }
         })
@@ -171,6 +227,13 @@ class LobbyScreen(
                 }
             }
         })
+
+        // Debug info for test players
+        if (useTestPlayers) {
+            val debugInfoLabel = Label("RUNNING IN TEST MODE", skin)
+            debugInfoLabel.setColor(1f, 0f, 0f, 1f) // Red color for testing
+            mainTable.add(debugInfoLabel).padTop(5f).row()
+        }
 
         // put all elements in the main table
         mainTable.add(headerTable).fillX().padTop(10f).padBottom(20f).row()

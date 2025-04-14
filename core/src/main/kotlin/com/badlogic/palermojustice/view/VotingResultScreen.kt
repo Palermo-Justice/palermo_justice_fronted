@@ -44,7 +44,7 @@ class VotingResultScreen(private val votedPlayer: Player? = null) : Screen {
         mainTable.add(captionLabel).expandX().padBottom(30f).row()
 
         val promptText = if (votedPlayer != null)
-            "${votedPlayer.name.uppercase()} was the ${votedPlayer.role.name.uppercase()}!"
+            "${votedPlayer.name.uppercase()} was the ${votedPlayer.role?.name?.uppercase()}!"
         else
             "THE VOTES WAS A TIE!"
 

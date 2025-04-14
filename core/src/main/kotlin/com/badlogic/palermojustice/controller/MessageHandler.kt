@@ -3,7 +3,6 @@ package com.badlogic.palermojustice.controller
 import com.badlogic.gdx.utils.Json
 import com.badlogic.palermojustice.model.GameModel
 import com.badlogic.palermojustice.model.GameState
-import com.badlogic.palermojustice.model.Player
 import com.badlogic.palermojustice.model.Role
 import java.util.concurrent.ConcurrentHashMap
 
@@ -66,7 +65,7 @@ class MessageHandler {
                         return
                     }
 
-                    gameController.updateGameState(gameState)
+                    //gameController.updateGameState(gameState)
                 } catch (e: Exception) {
                     println("Error in routeMessage: ${e.message}")
                     e.printStackTrace()

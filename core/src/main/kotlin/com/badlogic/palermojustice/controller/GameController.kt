@@ -48,12 +48,12 @@ class GameController private constructor() {
         view.updatePhaseDisplay(GamePhase.NIGHT.toString())
     }
 
-    fun updateGameState(gameState: GameState) {
-        // Update model with new state
-        model.updateGameState(gameState)
-        // Update view
-        view.updateDisplay()
-    }
+//    fun updateGameState(gameState: GameState) {
+//        // Update model with new state
+//        model.updateGameState(gameStatus)
+//        // Update view
+//        view.updateDisplay()
+//    }
 
     fun assignRole(role: Role) {
         // Assign role to current player
