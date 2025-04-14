@@ -318,7 +318,7 @@ class GameScreen(
     fun skipRoleAnimation() {
         if (!roleAnimationComplete && showRoleAnimation) {
             roleAnimationComplete = true
-            createGameUI(mainTable)  // Usiamo direttamente la referenza mainTable
+            createGameUI(mainTable)
         }
     }
 }
