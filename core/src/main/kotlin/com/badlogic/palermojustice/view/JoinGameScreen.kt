@@ -7,15 +7,16 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
-import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 
 class JoinGameScreen : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
-    private lateinit var nameField: TextField
-    private lateinit var codeField: TextField
+    private lateinit var roomCodeField: TextField
+    private lateinit var playerNameField: TextField
+    private var loadingDialog: Dialog? = null
+    private var pendingTransition: (() -> Unit)? = null
 
     override fun show() {
         stage = Stage(ScreenViewport())
@@ -27,44 +28,37 @@ class JoinGameScreen : Screen {
     }
 
     private fun createUI() {
-        // main table
+        // Main table
         val mainTable = Table()
         mainTable.setFillParent(true)
         mainTable.top().padTop(20f).padLeft(20f).padRight(20f)
         stage.addActor(mainTable)
 
-        // title
-        val titleLabel = Label("JOIN GAME", skin, "title")
+        // Title
+        val titleLabel = Label("Join Game", skin, "title")
         titleLabel.setFontScale(3f)
-        titleLabel.setAlignment(Align.center)
-        mainTable.add(titleLabel).expandX().center().padBottom(50f).row()
+        mainTable.add(titleLabel).left().padBottom(30f).row()
 
-        // Name field table
-        val nameTable = Table()
-        val nameLabel = Label("NAME", skin)
-        nameLabel.setFontScale(3f)
-        nameTable.add(nameLabel).width(100f).padRight(50f)
+        // Room Code field
+        val roomCodeLabel = Label("Room Code", skin)
+        roomCodeLabel.setFontScale(1.2f)
+        mainTable.add(roomCodeLabel).left().padBottom(10f).row()
 
-        nameField = TextField("", skin)
-        nameTable.add(nameField).fillX().height(50f)
+        roomCodeField = TextField("", skin, "custom")
+        mainTable.add(roomCodeField).fillX().size(540f, 150f).padBottom(30f).row()
 
-        mainTable.add(nameTable).fillX().padBottom(30f).row()
+        // Player name field
+        val playerNameLabel = Label("Your Name", skin)
+        playerNameLabel.setFontScale(1.2f)
+        mainTable.add(playerNameLabel).left().padBottom(10f).row()
 
-        // Code field table
-        val codeTable = Table()
-        val codeLabel = Label("CODE", skin)
-        codeLabel.setFontScale(3f)
-        codeTable.add(codeLabel).width(100f).padRight(50f)
+        playerNameField = TextField("", skin)
+        mainTable.add(playerNameField).fillX().height(50f).padBottom(50f).row()
 
-        codeField = TextField("", skin)
-        codeTable.add(codeField).fillX().height(50f)
-
-        mainTable.add(codeTable).fillX().padBottom(50f).row()
-
-        // bottom buttons
+        // Lower buttons
         val buttonsTable = Table()
 
-        val backButton = TextButton("BACK", skin)
+        val backButton = TextButton("Back", skin)
         backButton.pad(10f)
         backButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
@@ -72,16 +66,63 @@ class JoinGameScreen : Screen {
             }
         })
 
-        val joinButton = TextButton("JOIN", skin)
+        val joinButton = TextButton("Join", skin)
         joinButton.pad(10f)
         joinButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // Logic to join a game
-                val playerName = nameField.text
-                val gameCode = codeField.text
+                // Retrieve UI data
+                val roomCode = roomCodeField.text.trim().uppercase()
+                val playerName = playerNameField.text.trim()
 
-                // TODO
-                Main.instance.setScreen(HomeScreen())
+                if (roomCode.isBlank() || playerName.isBlank()) {
+                    showErrorDialog("Please fill in all required fields")
+                    return
+                }
+
+                loadingDialog = showLoadingDialog("Joining game...")
+
+                // First check if the room exists
+                Main.instance.firebaseInterface.getRoomInfo(roomCode) { roomInfo ->
+                    if (roomInfo == null) {
+                        Gdx.app.postRunnable {
+                            loadingDialog?.hide()
+                            showErrorDialog("Room not found. Please check the code and try again.")
+                        }
+                        return@getRoomInfo
+                    }
+
+                    // Room exists, now try to connect
+                    Main.instance.firebaseInterface.connectToRoom(roomCode, playerName) { success ->
+                        if (success) {
+                            // Get the game name if possible
+                            val gameName = if (roomInfo.containsKey("settings")) {
+                                val settings = roomInfo["settings"] as? Map<*, *>
+                                settings?.get("name") as? String ?: "Game Room"
+                            } else {
+                                "Game Room"
+                            }
+
+                            // Schedule transition for the next render cycle
+                            Gdx.app.postRunnable {
+                                loadingDialog?.hide()
+                                // Don't transition immediately - wait for next render cycle
+                                pendingTransition = {
+                                    Main.instance.setScreen(LobbyScreen(
+                                        roomId = roomCode,
+                                        playerName = playerName,
+                                        isHost = false,
+                                        gameName = gameName
+                                    ))
+                                }
+                            }
+                        } else {
+                            Gdx.app.postRunnable {
+                                loadingDialog?.hide()
+                                showErrorDialog("Failed to join room. It may be full or game already started.")
+                            }
+                        }
+                    }
+                }
             }
         })
 
@@ -91,12 +132,33 @@ class JoinGameScreen : Screen {
         mainTable.add(buttonsTable).fillX()
     }
 
+    private fun showErrorDialog(message: String): Dialog {
+        val dialog = Dialog("Error", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.button("OK")
+        dialog.show(stage)
+        return dialog
+    }
+
+    private fun showLoadingDialog(message: String): Dialog {
+        val dialog = Dialog("", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.show(stage)
+        return dialog
+    }
+
     override fun render(delta: Float) {
         Gdx.gl.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
         stage.act(delta)
         stage.draw()
+
+        // Check if we have a pending transition and execute it
+        pendingTransition?.let {
+            it.invoke()
+            pendingTransition = null
+        }
     }
 
     override fun resize(width: Int, height: Int) {

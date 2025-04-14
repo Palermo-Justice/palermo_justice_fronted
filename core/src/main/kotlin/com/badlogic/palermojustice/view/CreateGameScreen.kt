@@ -7,9 +7,10 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
-import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
+import com.badlogic.palermojustice.firebase.FirebaseInterface
+
 
 class CreateGameScreen : Screen {
     private lateinit var stage: Stage
@@ -80,13 +81,50 @@ class CreateGameScreen : Screen {
         createButton.pad(10f)
         createButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // Game logic
+                // Retrieve UI data
                 val gameName = gameNameField.text
                 val playerCount = playerCountSelectBox.selected.toInt()
                 val playerName = playerNameField.text
 
+                if (gameName.isBlank() || playerName.isBlank()) {
+                    showErrorDialog("Please fill in all required fields")
+                    return
+                }
 
-                Main.instance.setScreen(LobbyScreen())
+                val roomSettings = mapOf(
+                    "name" to gameName,
+                    "maxPlayers" to playerCount,
+                    "createdBy" to playerName
+                )
+
+                val loadingDialog = showLoadingDialog("Creating game...")
+
+                val debugButton = TextButton("DEBUG: Force Continue", skin)
+                debugButton.addListener(object : ChangeListener() {
+                    override fun changed(event: ChangeEvent, actor: Actor) {
+                        loadingDialog.hide()
+                        val debugRoomId = "DEBUG_" + System.currentTimeMillis()
+                        Main.instance.setScreen(LobbyScreen(debugRoomId, playerName, true, gameName))
+                    }
+                })
+                loadingDialog.button(debugButton)
+
+                Main.instance.firebaseInterface.createRoom(playerName, roomSettings) { roomId ->
+                    Gdx.app.postRunnable {
+                        loadingDialog.hide()
+
+                        if (roomId != null) {
+                            Main.instance.setScreen(LobbyScreen(
+                                roomId = roomId,
+                                playerName = playerName,
+                                isHost = true,
+                                gameName = gameName
+                            ))
+                        } else {
+                            showErrorDialog("Failed to create game. Please try again.")
+                        }
+                    }
+                }
             }
         })
 
@@ -115,5 +153,20 @@ class CreateGameScreen : Screen {
     override fun dispose() {
         stage.dispose()
         skin.dispose()
+    }
+
+    private fun showErrorDialog(message: String): Dialog {
+        val dialog = Dialog("Error", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f).size(500f, 500f)
+        dialog.button("OK")
+        dialog.show(stage)
+        return dialog
+    }
+
+    private fun showLoadingDialog(message: String): Dialog {
+        val dialog = Dialog("", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f).size(500f, 500f)
+        dialog.show(stage)
+        return dialog
     }
 }

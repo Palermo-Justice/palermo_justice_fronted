@@ -9,7 +9,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.model.GameState
-import com.badlogic.palermojustice.model.Player
 
 class FinalResultScreen : Screen {
     private lateinit var stage: Stage
@@ -39,7 +38,7 @@ class FinalResultScreen : Screen {
             nameLabel.setFontScale(5f)
             nameLabel.setAlignment(Align.left)
 
-            val roleLabel = Label("${player.role.name}", skin, "default")
+            val roleLabel = Label("${player.role?.name}", skin, "default")
             roleLabel.setFontScale(5f)
             roleLabel.setAlignment(Align.right)
 

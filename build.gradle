@@ -8,9 +8,11 @@ buildscript {
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
   }
+
   dependencies {
-    classpath 'com.android.tools.build:gradle:8.8.2'
+    classpath 'com.android.tools.build:gradle:8.6.1'
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    classpath 'com.google.gms:google-services:4.4.2'
 
   }
 }
@@ -19,12 +21,16 @@ allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'idea'
 
-  // This allows you to "Build and run using IntelliJ IDEA", an option in IDEA's Settings.
   idea {
     module {
       outputDir file('build/classes/java/main')
       testOutputDir file('build/classes/java/test')
     }
+  }
+
+  repositories {
+    google()
+    mavenCentral()
   }
 }
 

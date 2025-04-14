@@ -1,24 +1,25 @@
 package com.badlogic.palermojustice.model
 
+import com.badlogic.palermojustice.model.GameModel
+
 object GameState {
-    val players = mutableListOf<Player>().apply {
-        addAll(
-            listOf(
-                Player("1", "Mario", Paesano()),
-                Player("2", "Luigi", Mafioso()),
-                Player("3", "Peach", Ispettore()),
-                Player("4", "Toad", Sgarrista()),
-                Player("5", "Yoshi", Paesano())
-            )
-        )
-    }
-
-
+    val players = mutableListOf<Player>()
+    val roleSequence = listOf("Ispettore", "Mafioso", "Sgarrista")
     var currentRoleIndex = 0
+    var currentRolePlayers: MutableList<Player> = mutableListOf()
+    var currentActingPlayerIndex = 0
 
-    val roleSequence = listOf("Ispettore", "Sgarrista", "Mafioso")
+    fun assignRoles() {
+        val roles = listOf(
+            Mafioso(),
+            Ispettore(),
+            Paesano(),
+            Paesano()
+            // Add or remove based on player count
+        ).shuffled()
 
-    fun getPlayerByRole(role: String): Player? {
-        return players.firstOrNull { it.role.name == role }
+        for ((player, role) in players.zip(roles)) {
+            player.role = role
+        }
     }
 }
