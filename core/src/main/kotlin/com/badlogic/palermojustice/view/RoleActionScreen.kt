@@ -3,10 +3,8 @@ package com.badlogic.palermojustice.view
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
@@ -31,75 +29,89 @@ class RoleActionScreen : Screen {
         mainTable.setFillParent(true)
         stage.addActor(mainTable)
 
-        // Get current role and player
         val currentRole = GameState.roleSequence[GameState.currentRoleIndex]
-        val currentPlayer = GameState.players.firstOrNull { player ->
-            player.role?.name == currentRole
+        val currentPlayer = GameState.players.firstOrNull {
+            it.role?.name == currentRole
         }
 
-        // Instruction label
         val instructionText = currentPlayer?.role?.description ?: "No action"
-        val instructionLabel = Label(instructionText, skin, "default")
+        val instructionLabel = Label(instructionText, skin, "big")
+        instructionLabel.setFontScale(2f)
         val titleLabel = Label(currentRole, skin, "title")
-
+        titleLabel.setFontScale(3f)
         instructionLabel.setAlignment(Align.center)
+
         mainTable.add(titleLabel).padBottom(40f).row()
         mainTable.add(instructionLabel).padBottom(20f).row()
 
-        // Player selection list
         val playerGrid = Table()
         playerGrid.defaults().pad(10f).width(150f).height(100f)
 
-        val selectedPlayerId = arrayOf<String?>(null) // mutable holder for selected player
+        val selectedPlayerId = arrayOf<String?>(null)
+
+        // ButtonGroup to allow only one selected at a time
+        val buttonGroup = ButtonGroup<TextButton>()
+        buttonGroup.setMinCheckCount(0)
+        buttonGroup.setMaxCheckCount(1)
 
         GameState.players.forEachIndexed { index, player ->
             val aliveStatus = if (player.isAlive) "Alive" else "Dead"
-            val roleName = player.role?.name ?: "Unknown"
-            val buttonText = "${player.name}\n$roleName - $aliveStatus"
-            val playerButton = TextButton(buttonText, skin)
+            val buttonText = "${player.name}\n${player.role?.name}"
+            val playerButton = TextButton(buttonText, skin, "select_player")
 
-            playerButton.addListener(object : ClickListener() {
-                override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                    selectedPlayerId[0] = player.id
-                    println("Selected player: ${player.name}")
-                }
-            })
+            playerButton.addListener {
+                selectedPlayerId[0] = player.id
+                Gdx.app.log("DEBUG", "Selected player: ${player.name}")
+                true
+            }
 
-            playerGrid.add(playerButton).width(150f).height(80f).pad(5f)
-            if ((index + 1) % 3 == 0) playerGrid.row() // new row every 3 buttons
+            buttonGroup.add(playerButton)
+            playerGrid.add(playerButton).width(250f).height(250f).pad(10f)
+            if ((index + 1) % 3 == 0) playerGrid.row()
         }
 
         mainTable.add(playerGrid).padBottom(20f).row()
 
-        // Confirm button
+        // Confirm counter label
+        val confirmCountLabel = Label("0 / ${GameState.players.size} players confirmed", skin, "big")
+        confirmCountLabel.setFontScale(2f)
+        mainTable.add(confirmCountLabel).padBottom(20f).row()
+
+        // Keep track of who has confirmed
+        val confirmedPlayers = mutableSetOf<String>()
+
         val confirmButton = TextButton("Confirm", skin)
-        confirmButton.addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                val targetPlayer = GameState.players.find { it.id == selectedPlayerId[0] }
+        confirmButton.addListener {
+            val targetPlayer = GameState.players.find { it.id == selectedPlayerId[0] }
+            val currentPlayerId = GameState.players[0].id // <- You'll need a way to get the local player's ID
 
-                if (targetPlayer == null || currentPlayer == null) {
-                    return
-                }
+            if (targetPlayer == null) return@addListener false
+            if (confirmedPlayers.contains(currentPlayerId)) return@addListener false
 
-                // Check if current player's role name matches the expected current role
-                if (currentPlayer.role?.name != currentRole) {
-                    return
-                }
+            // Perform the role action only if this player matches the current role
+            val currentPlayer = GameState.players.find { it.id == currentPlayerId }
+            if (currentPlayer?.role?.name == currentRole) {
+                currentPlayer.role!!.performAction(GameState.players, targetPlayer)
+            }
 
-                currentPlayer.role?.performAction(GameState.players, targetPlayer)
+            confirmedPlayers.add(currentPlayerId)
+            confirmCountLabel.setText("${confirmedPlayers.size} / ${GameState.players.size} players confirmed")
 
+            if (confirmedPlayers.size >= GameState.players.size) {
                 GameState.currentRoleIndex++
-
                 if (GameState.currentRoleIndex < GameState.roleSequence.size) {
                     Main.instance.setScreen(RoleActionScreen())
                 } else {
-                    Main.instance.setScreen(LobbyScreen("", currentPlayer.name, true, "")) // or next phase
+                    Main.instance.setScreen(VotingScreen()) // or next phase
                 }
             }
-        })
+
+            true
+        }
 
         mainTable.add(confirmButton).width(200f).padTop(20f)
     }
+
 
     override fun render(delta: Float) {
         Gdx.gl.glClearColor(0.9f, 0.9f, 0.9f, 1f)

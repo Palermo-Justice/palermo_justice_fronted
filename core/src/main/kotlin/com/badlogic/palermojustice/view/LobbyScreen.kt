@@ -124,13 +124,15 @@ class LobbyScreen(
 
         // Add all players
         playersList.forEach { name ->
-            val playerLabel = Label(name, skin)
+            val playerLabel = Label(name, skin, "big")
+            playerLabel.setFontScale(1.5f)
             // Different styling for current player
             if (name == playerName) {
                 // Use an existing style in the skin
-                playerLabel.style = skin.get("default", Label.LabelStyle::class.java)
+                playerLabel.style = skin.get("big", Label.LabelStyle::class.java)
                 // You might want to add some indicator that this is the current player
-                val currentPlayerIndicator = Label(" (You)", skin)
+                val currentPlayerIndicator = Label(" (You)", skin, "big")
+                currentPlayerIndicator.setFontScale(1.5f)
                 val playerRow = Table()
                 playerRow.add(playerLabel).left()
                 playerRow.add(currentPlayerIndicator).left()
@@ -175,7 +177,8 @@ class LobbyScreen(
 
         // Room code section
         val codeTable = Table()
-        val codeHeaderLabel = Label("ROOM CODE:", skin)
+        val codeHeaderLabel = Label("ROOM CODE:", skin, "big")
+        codeHeaderLabel.setFontScale(1.5f)
         codeLabel = Label(roomId, skin, "title")
         codeLabel.setFontScale(1.5f)
 
@@ -184,10 +187,11 @@ class LobbyScreen(
 
         // Players section
         val playersHeaderLabel = Label("PLAYERS", skin, "title")
+        playersHeaderLabel.setFontScale(2f)
 
         // Create a scrollable table for players
         playersTable = Table()
-        playersTable.left().top()
+        playersTable.left().top().padLeft(20f).padTop(10f)
 
         val scrollPane = ScrollPane(playersTable, skin)
         scrollPane.setFadeScrollBars(false)
@@ -245,8 +249,8 @@ class LobbyScreen(
         // put all elements in the main table
         mainTable.add(headerTable).fillX().padTop(10f).padBottom(20f).row()
         mainTable.add(codeTable).fillX().padBottom(10f).row()
-        mainTable.add(copyButton).width(150f).padBottom(20f).row()
-        mainTable.add(playersHeaderLabel).left().padBottom(10f).row()
+        mainTable.add(copyButton).width(200f).padBottom(20f).row()
+        mainTable.add(playersHeaderLabel).left().padBottom(10f).padLeft(20f).row()
         mainTable.add(scrollPane).expand().fill().padBottom(20f).row()
         mainTable.add(buttonsTable).fillX().padBottom(20f)
 
