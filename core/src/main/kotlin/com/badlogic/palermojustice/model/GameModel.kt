@@ -1,5 +1,4 @@
 package com.badlogic.palermojustice.model
-import com.badlogic.palermojustice.model.Role
 import java.util.ArrayList
 
 enum class GamePhase {
@@ -38,7 +37,7 @@ class Player {
 }
 
 class GameModel {
-    // Attributes
+    // Attributes - main source of truth for players
     private val players: MutableList<Player> = ArrayList()
     private var currentPhase: GamePhase = GamePhase.LOBBY
     private var gameStatus: GameStatus = GameStatus.WAITING
@@ -48,8 +47,31 @@ class GameModel {
     var currentPlayerRole: Role? = null
     var currentPlayerId: String = ""
 
+    // Player management methods
     fun getPlayers(): List<Player> {
         return players.toList()
+    }
+
+    // Add a new method to add a player by name
+    fun addPlayerByName(playerName: String): Player {
+        // First check if player already exists
+        val existingPlayer = players.find { it.name == playerName }
+        if (existingPlayer != null) {
+            return existingPlayer
+        }
+
+        // Create new player if not found
+        val player = Player(
+            id = System.currentTimeMillis().toString(), // Create a unique ID
+            name = playerName
+        )
+        players.add(player)
+        return player
+    }
+
+    // Method to get only player names (for LobbyScreen)
+    fun getPlayerNames(): List<String> {
+        return players.map { it.name }
     }
 
     fun getCurrentPhase(): GamePhase {
@@ -60,9 +82,11 @@ class GameModel {
         gameStatus = newState
     }
 
-
     fun addPlayer(player: Player) {
-        players.add(player)
+        // Check if the player already exists
+        if (players.none { it.name == player.name }) {
+            players.add(player)
+        }
     }
 
     fun removePlayer(playerName: String) {
@@ -77,13 +101,18 @@ class GameModel {
         return players.filter { it.isAlive }
     }
 
-//    fun getMafiosi(): List<Player> {
-//        return players.filter { it.role == Mafioso && it.isAlive }
-//    }
-//
-//    fun getCitizens(): List<Player> {
-//        return players.filter { it.role != Mafioso && it.isAlive }
-//    }
+    // Methods to get players by role - using the Role class
+    fun getPlayersByRole(role: Role): List<Player> {
+        return players.filter { it.role == role && it.isAlive }
+    }
+
+    fun getMafiosi(): List<Player> {
+        return players.filter { it.role is Mafioso && it.isAlive }
+    }
+
+    fun getCitizens(): List<Player> {
+        return players.filter { it.role !is Mafioso && it.isAlive }
+    }
 
     fun setPhase(phase: GamePhase) {
         currentPhase = phase
@@ -93,9 +122,101 @@ class GameModel {
         return gameStatus == GameStatus.FINISHED
     }
 
-    // Method to update model based on server status
-    fun updateFromServer(serverGameState: Any) {
-        // TODO Implement update based on data received by server
-        // Based on data exchanged with server
+    // Method to clear all players (useful for resetting game state)
+    fun clearPlayers() {
+        players.clear()
+    }
+
+    // Method to assign roles to players
+    fun assignRoles() {
+        // Create a list of roles based on number of players
+        val roleList = mutableListOf<Role>()
+
+        // Always have at least one Mafioso
+        roleList.add(Mafioso())
+
+        // Add an Ispettore if we have at least 4 players
+        if (players.size >= 4) {
+            roleList.add(Ispettore())
+        }
+
+        // Add Sgarrista if we have at least 5 players
+        if (players.size >= 5) {
+            roleList.add(Sgarrista())
+        }
+
+        // Fill remaining slots with Paesani
+        while (roleList.size < players.size) {
+            roleList.add(Paesano())
+        }
+
+        // Shuffle roles and assign
+        roleList.shuffle()
+
+        for ((index, player) in players.withIndex()) {
+            player.role = roleList[index]
+        }
+    }
+
+    // Method to update model based on server data
+    fun updateFromServer(serverData: Map<String, Any>) {
+        // Update room ID if present
+        (serverData["roomId"] as? String)?.let { this.roomId = it }
+
+        // Update game status if present
+        (serverData["state"] as? String)?.let {
+            when (it) {
+                "WAITING" -> this.gameStatus = GameStatus.WAITING
+                "RUNNING" -> this.gameStatus = GameStatus.RUNNING
+                "FINISHED" -> this.gameStatus = GameStatus.FINISHED
+            }
+        }
+
+        // Update game phase if present
+        (serverData["currentPhase"] as? String)?.let {
+            try {
+                this.currentPhase = GamePhase.valueOf(it)
+            } catch (e: Exception) {
+                // Phase string doesn't match enum, ignore
+            }
+        }
+
+        // Update players if present
+        (serverData["players"] as? Map<*, *>)?.let { playersMap ->
+            // Process each player entry from server
+            playersMap.forEach { (playerId, playerData) ->
+                if (playerData is Map<*, *>) {
+                    val name = playerData["name"] as? String ?: return@forEach
+                    val roleName = playerData["role"] as? String
+                    val isAlive = playerData["isAlive"] as? Boolean ?: true
+                    val isProtected = playerData["isProtected"] as? Boolean ?: false
+
+                    // Find existing player or create new one
+                    var player = getPlayerByName(name)
+                    if (player == null) {
+                        player = Player(
+                            id = playerId.toString(),
+                            name = name
+                        )
+                        players.add(player)
+                    }
+
+                    // Update player data
+                    player.isAlive = isAlive
+                    player.isProtected = isProtected
+
+                    // Try to parse the role
+                    if (roleName != null) {
+                        player.role = when (roleName) {
+                            "Mafioso" -> Mafioso()
+                            "Ispettore" -> Ispettore()
+                            "Sgarrista" -> Sgarrista()
+                            "Paesano" -> Paesano()
+                            else -> Paesano() // Default role
+                        }
+                    }
+                }
+            }
+        }
     }
 }

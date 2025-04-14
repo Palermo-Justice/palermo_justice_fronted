@@ -7,8 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
-import com.badlogic.palermojustice.Main
-import com.badlogic.palermojustice.model.GameState
+import com.badlogic.palermojustice.model.GameStateHelper
 
 class RoleAssignmentScreen : Screen {
     private lateinit var stage: Stage
@@ -35,7 +34,7 @@ class RoleAssignmentScreen : Screen {
         mainTable.add(titleLabel).expandX().align(Align.center).padBottom(20f).row()
 
         // Get current role and player
-        val currentRole = GameState.roleSequence[GameState.currentRoleIndex]
+        val currentRole = GameStateHelper.roleSequence[GameStateHelper.currentRoleIndex]
 //        val currentPlayer = GameState.getPlayerByRole(currentRole)
 
         // Role label

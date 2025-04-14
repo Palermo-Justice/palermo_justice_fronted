@@ -10,18 +10,33 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
-import com.badlogic.palermojustice.model.GameState
-import com.badlogic.palermojustice.model.Role
+import com.badlogic.palermojustice.controller.GameController
+import com.badlogic.palermojustice.model.GameStateHelper
+import com.badlogic.palermojustice.model.Player
 
+/**
+ * Screen for role-specific night actions.
+ * Uses GameController instead of direct access to GameStateHelper.
+ */
 class RoleActionScreen : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
+    private val gameController = GameController.getInstance()
+
+    // Store the selected player ID
+    private var selectedPlayerId: String? = null
+
+    // Current role being processed
+    private var currentRoleName: String = ""
 
     override fun show() {
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
         skin = Skin(Gdx.files.internal("pj2.json"))
+
+        // Get the current role from GameStateHelper
+        currentRoleName = GameStateHelper.roleSequence[GameStateHelper.currentRoleIndex]
 
         createUI()
     }
@@ -31,16 +46,13 @@ class RoleActionScreen : Screen {
         mainTable.setFillParent(true)
         stage.addActor(mainTable)
 
-        // Get current role and player
-        val currentRole = GameState.roleSequence[GameState.currentRoleIndex]
-        val currentPlayer = GameState.players.firstOrNull { player ->
-            player.role?.name == currentRole
-        }
+        // Get current player with this role
+        val currentPlayer = findPlayerWithRole(currentRoleName)
 
         // Instruction label
-        val instructionText = currentPlayer?.role?.description ?: "No action"
+        val instructionText = getRoleDescription(currentRoleName)
         val instructionLabel = Label(instructionText, skin, "default")
-        val titleLabel = Label(currentRole, skin, "title")
+        val titleLabel = Label(currentRoleName, skin, "title")
 
         instructionLabel.setAlignment(Align.center)
         mainTable.add(titleLabel).padBottom(40f).row()
@@ -50,9 +62,10 @@ class RoleActionScreen : Screen {
         val playerGrid = Table()
         playerGrid.defaults().pad(10f).width(150f).height(100f)
 
-        val selectedPlayerId = arrayOf<String?>(null) // mutable holder for selected player
+        // Get all players from the GameModel
+        val players = gameController.model.getPlayers()
 
-        GameState.players.forEachIndexed { index, player ->
+        players.forEachIndexed { index, player ->
             val aliveStatus = if (player.isAlive) "Alive" else "Dead"
             val roleName = player.role?.name ?: "Unknown"
             val buttonText = "${player.name}\n$roleName - $aliveStatus"
@@ -60,7 +73,7 @@ class RoleActionScreen : Screen {
 
             playerButton.addListener(object : ClickListener() {
                 override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                    selectedPlayerId[0] = player.id
+                    selectedPlayerId = player.id
                     println("Selected player: ${player.name}")
                 }
             })
@@ -75,30 +88,62 @@ class RoleActionScreen : Screen {
         val confirmButton = TextButton("Confirm", skin)
         confirmButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                val targetPlayer = GameState.players.find { it.id == selectedPlayerId[0] }
+                val targetPlayer = gameController.model.getPlayers()
+                    .find { it.id == selectedPlayerId }
 
-                if (targetPlayer == null || currentPlayer == null) {
-                    return
-                }
+                // Check if we have both a current player and a selected player
+                if (currentPlayer != null && targetPlayer != null) {
+                    // Perform the role action
+                    GameStateHelper.processNightAction(currentPlayer, targetPlayer)
 
-                // Check if current player's role name matches the expected current role
-                if (currentPlayer.role?.name != currentRole) {
-                    return
-                }
+                    // Move to next role in sequence
+                    GameStateHelper.currentRoleIndex++
 
-                currentPlayer.role?.performAction(GameState.players, targetPlayer)
-
-                GameState.currentRoleIndex++
-
-                if (GameState.currentRoleIndex < GameState.roleSequence.size) {
-                    Main.instance.setScreen(RoleActionScreen())
+                    if (GameStateHelper.currentRoleIndex < GameStateHelper.roleSequence.size) {
+                        // Go to next role's action screen
+                        Main.instance.setScreen(RoleActionScreen())
+                    } else {
+                        // All night actions completed, go to next phase
+                        // For testing, we'll go back to lobby
+                        val hostName = gameController.model.getPlayers().firstOrNull()?.name ?: ""
+                        Main.instance.setScreen(LobbyScreen("", hostName, true, ""))
+                    }
                 } else {
-                    Main.instance.setScreen(LobbyScreen("", currentPlayer.name, true, "")) // or next phase
+                    // Show error message
+                    showErrorDialog("Please select a valid target")
                 }
             }
         })
 
         mainTable.add(confirmButton).width(200f).padTop(20f)
+    }
+
+    /**
+     * Find a player with the specified role
+     */
+    private fun findPlayerWithRole(roleName: String): Player? {
+        return gameController.model.getPlayers()
+            .filter { it.isAlive }
+            .find { it.role?.name == roleName }
+    }
+
+    /**
+     * Get the description for a role
+     */
+    private fun getRoleDescription(roleName: String): String {
+        // Get the first player with this role to get the description
+        val player = findPlayerWithRole(roleName)
+        return player?.role?.description ?: "No action"
+    }
+
+    /**
+     * Show an error dialog
+     */
+    private fun showErrorDialog(message: String) {
+        val dialog = Dialog("Error", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.button("OK")
+        dialog.show(stage)
     }
 
     override fun render(delta: Float) {

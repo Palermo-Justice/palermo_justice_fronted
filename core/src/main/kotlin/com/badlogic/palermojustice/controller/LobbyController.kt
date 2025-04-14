@@ -2,9 +2,12 @@ package com.badlogic.palermojustice.controller
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.palermojustice.firebase.FirebaseInterface
-import com.badlogic.palermojustice.model.GameState
 import com.badlogic.palermojustice.view.LobbyScreen
 
+/**
+ * Controller for the lobby screen.
+ * Now uses GameModel via GameController as the single source of truth for players.
+ */
 class LobbyController(
     private val networkController: FirebaseInterface,
     private val roomId: String,
@@ -13,25 +16,34 @@ class LobbyController(
 ) {
     private val messageHandler = MessageHandler()
     private var view: LobbyScreen? = null
-    private val playersList = mutableListOf<String>()
+    private val gameController = GameController.getInstance()
 
     init {
-        // Add current player to the list
-        playersList.add(playerName)
-        playersList.add("player2")
-        playersList.add("player3")
-        playersList.add("player4")
-        playersList.add("player5")
+        // Initialize game state with this room's info
+        gameController.model.roomId = roomId
 
-    }
+        // Add current player to the model
+        gameController.model.addPlayerByName(playerName)
 
-    // Method to connect the view to the controller
-    fun setView(lobbyScreen: LobbyScreen) {
-        this.view = lobbyScreen
+        // Start listening for updates immediately
         setupPlayerUpdates()
     }
 
-    // Configure player updates
+    /**
+     * Method to connect the view to the controller
+     */
+    fun setView(lobbyScreen: LobbyScreen) {
+        this.view = lobbyScreen
+
+        // Initial update of the view with current player list - on the render thread
+        Gdx.app.postRunnable {
+            view?.updatePlayersList(gameController.model.getPlayerNames())
+        }
+    }
+
+    /**
+     * Configure player updates
+     */
     private fun setupPlayerUpdates() {
         // Listen for game updates from Firebase
         networkController.listenForGameUpdates { gameData ->
@@ -39,66 +51,150 @@ class LobbyController(
                 updatePlayersFromGameData(gameData)
             }
         }
-    }
 
-    // Update player list from game data
-    private fun updatePlayersFromGameData(gameData: Map<String, Any>) {
-        // Extract player data
-        val playersMap = gameData["players"] as? Map<String, Any> ?: return
-
-        // Reset player list (except self)
-        playersList.clear()
-        playersList.add(playerName) // Keep self in the list
-
-        // Add all players from data
-        playersMap.forEach { (_, playerData) ->
-            val player = playerData as? Map<String, Any> ?: return@forEach
-            val name = player["name"] as? String ?: return@forEach
-            if (name != playerName && !playersList.contains(name)) {
-                playersList.add(name)
+        // Also get initial room info
+        networkController.getRoomInfo(roomId) { roomData ->
+            if (roomData != null) {
+                Gdx.app.postRunnable {
+                    updatePlayersFromGameData(roomData)
+                }
             }
         }
-
-        // Update UI
-        view?.updatePlayersList(playersList)
     }
 
-    // Start the game
+    /**
+     * Update player list from game data
+     */
+    private fun updatePlayersFromGameData(gameData: Map<String, Any>) {
+        try {
+            // Extract player data - with the new structure, players are directly under the room
+            val playersMap = gameData["players"] as? Map<*, *> ?: return
+
+            // Process players from server data
+            playersMap.forEach { (_, playerData) ->
+                try {
+                    when (playerData) {
+                        is Map<*, *> -> {
+                            // In the new structure, playerData should always be a Map
+                            // with 'name' as one of the fields
+                            val name = playerData["name"] as? String
+                            if (name != null) {
+                                gameController.model.addPlayerByName(name)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Continue with next player
+                }
+            }
+
+            // If no players were found using the map approach, check if the host name is available
+            if (gameController.model.getPlayers().isEmpty()) {
+                val hostName = gameData["hostName"] as? String
+                if (hostName != null) {
+                    gameController.model.addPlayerByName(hostName)
+                }
+            }
+
+            // Ensure current player is in the list
+            gameController.model.addPlayerByName(playerName)
+
+            // Update UI if view is available - always on render thread
+            Gdx.app.postRunnable {
+                view?.updatePlayersList(gameController.model.getPlayerNames())
+            }
+        } catch (e: Exception) {
+            // Ensure player is still in the list if something goes wrong
+            gameController.model.addPlayerByName(playerName)
+
+            Gdx.app.postRunnable {
+                view?.updatePlayersList(gameController.model.getPlayerNames())
+            }
+        }
+    }
+
+    /**
+     * Join an existing room with validation
+     */
+    fun joinRoom(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
+        // First check if the room exists
+        networkController.getRoomInfo(roomId) { roomData ->
+            if (roomData == null) {
+                // Room doesn't exist
+                callback(false)
+                return@getRoomInfo
+            }
+
+            // Room exists, check if it's in a joinable state
+            val state = roomData["state"] as? String
+            if (state != null && state != "WAITING" && state != "LOBBY") {
+                // Room is not in a joinable state (game already started)
+                callback(false)
+                return@getRoomInfo
+            }
+
+            // Check if the room is full
+            val settings = roomData["settings"] as? Map<*, *>
+            val maxPlayers = settings?.get("maxPlayers") as? Number ?: 5
+            val players = roomData["players"] as? Map<*, *> ?: mapOf<String, Any>()
+
+            if (players.size >= maxPlayers.toInt()) {
+                // Room is full
+                callback(false)
+                return@getRoomInfo
+            }
+
+            // Room exists and is joinable, so connect to it
+            networkController.connectToRoom(roomId, playerName, callback)
+        }
+    }
+
+    /**
+     * Start the game
+     */
     fun startGame() {
-        if (isHost && playersList.size >= 3) { // Minimum 3 players to start
+        val players = gameController.model.getPlayers()
+        if (isHost && players.size >= 3) { // Minimum 3 players to start
             // Send start game message
+            val playerNames = gameController.model.getPlayerNames()
             val gameData = mapOf(
                 "state" to "RUNNING",
-                "players" to playersList
+                "currentPhase" to "STARTING",
+                "playerList" to playerNames // Store a simple list of player names for easy access
             )
             networkController.sendMessage("START_GAME", gameData)
             view?.navigateToGameScreen(roomId, playerName, isHost)
-        } else if (playersList.size < 3) {
+        } else if (players.size < 3) {
             view?.showMessage("Need at least 3 players to start")
+        } else if (!isHost) {
+            view?.showMessage("Only the host can start the game")
         }
     }
 
-    // Disconnect from the game
+    /**
+     * Disconnect from the game
+     */
     fun disconnect() {
         networkController.disconnect()
     }
 
-    // Get current player list
+    /**
+     * Get current player list
+     */
     fun getPlayersList(): List<String> {
-        return playersList.toList() // Return a copy of the list
+        return gameController.model.getPlayerNames()
     }
 
-    // Check if user is host
+    /**
+     * Check if user is host
+     */
     fun isHost(): Boolean {
         return isHost
     }
 
-    // Join an existing room
-    fun joinRoom(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
-        networkController.connectToRoom(roomId, playerName, callback)
-    }
-
-    // Copy room code to clipboard - platform specific implementation required
+    /**
+     * Copy room code to clipboard - platform specific implementation required
+     */
     fun copyRoomCode(): String {
         return roomId
     }

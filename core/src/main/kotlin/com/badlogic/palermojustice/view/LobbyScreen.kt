@@ -10,9 +10,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
+import com.badlogic.palermojustice.controller.GameController
 import com.badlogic.palermojustice.controller.LobbyController
-import com.badlogic.palermojustice.model.GameModel
-import com.badlogic.palermojustice.model.GameState
 import com.badlogic.palermojustice.model.Mafioso
 import com.badlogic.palermojustice.model.Paesano
 import com.badlogic.palermojustice.model.Player
@@ -32,8 +31,9 @@ class LobbyScreen(
     // Store pending player updates until UI is ready
     private var pendingPlayersList: List<String>? = null
 
-    // Controller for logic
+    // Controllers for logic
     private lateinit var controller: LobbyController
+    private val gameController = GameController.getInstance()
 
     // Test players list for offline testing
     private val testPlayersList = mutableListOf<String>()
@@ -70,7 +70,7 @@ class LobbyScreen(
     }
 
     private fun setupTestPlayers() {
-        // Add test players
+        // Add test players to the local list for UI
         testPlayersList.clear()
         testPlayersList.add(playerName) // Current player
         testPlayersList.add("Alice")
@@ -78,36 +78,27 @@ class LobbyScreen(
         testPlayersList.add("Charlie")
         testPlayersList.add("Spongebob")
 
-        // Also add to GameState for gameplay testing
-        GameState.players.clear()
-        GameState.players.add(Player().apply {
-            id = "0"
-            name = playerName
-            role = Paesano()
-        })
-        GameState.players.add(Player().apply {
-            id = "1"
-            name = "Alice"
-            role = Paesano()
-        })
-        GameState.players.add(Player().apply {
-            id = "2"
-            name = "Bob"
-            role = Paesano()
-        })
-        GameState.players.add(Player().apply {
-            id = "3"
-            name = "Charlie"
-            role = Paesano()
-        })
-        GameState.players.add(Player().apply {
-            id = "4"
-            name = "Spongebob"
-            role = Mafioso()
-        })
+        // Clear existing players in the GameModel
+        gameController.model.clearPlayers()
+
+        // Add players to GameModel
+        val currentPlayer = gameController.model.addPlayerByName(playerName)
+        currentPlayer.role = Paesano()
+
+        val alice = gameController.model.addPlayerByName("Alice")
+        alice.role = Paesano()
+
+        val bob = gameController.model.addPlayerByName("Bob")
+        bob.role = Paesano()
+
+        val charlie = gameController.model.addPlayerByName("Charlie")
+        charlie.role = Paesano()
+
+        val spongebob = gameController.model.addPlayerByName("Spongebob")
+        spongebob.role = Mafioso()
 
         // Randomize roles for testing
-        GameState.assignRoles()
+        gameController.model.assignRoles()
     }
 
     // Update player list in UI
