@@ -1,0 +1,429 @@
+package com.badlogic.palermojustice.android
+
+import com.badlogic.palermojustice.controller.GameMessage
+import com.badlogic.palermojustice.controller.MessageHandler
+import com.badlogic.palermojustice.controller.MessageType
+import com.badlogic.palermojustice.firebase.FirebaseInterface
+import android.content.Context
+import android.util.Log
+import com.google.firebase.database.*
+import com.google.firebase.database.database
+import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
+
+class NetworkController private constructor(private val context: Context) : FirebaseInterface {
+    private val TAG = "NetworkController"
+    private val database = Firebase.database.reference
+    private val messageHandler = MessageHandler()
+    private var roomReference: DatabaseReference? = null
+    private var playerReference: DatabaseReference? = null
+    private var playerId: String? = null
+    private var roomListener: ValueEventListener? = null
+    private var messagesListener: ChildEventListener? = null
+
+    companion object {
+        @JvmStatic
+        private var instance: NetworkController? = null
+
+        @JvmStatic
+        fun initialize(context: Context): NetworkController {
+            Log.d("NetworkController", "Initializing NetworkController")
+            // Ensure Firebase is initialized
+            if (FirebaseApp.getApps(context).isEmpty()) {
+                Log.d("NetworkController", "Initializing Firebase app")
+                FirebaseApp.initializeApp(context)
+            } else {
+                Log.d("NetworkController", "Firebase app already initialized")
+            }
+
+            instance = NetworkController(context)
+            Log.d("NetworkController", "NetworkController instance created")
+            return instance!!
+        }
+
+        @JvmStatic
+        fun getInstance(): NetworkController {
+            return instance ?: throw IllegalStateException("NetworkController must be initialized before getting instance")
+        }
+    }
+
+    /**
+     * Creates a new game room and returns the room ID.
+     * @param hostName The name of the host player
+     * @param roomSettings Optional map of initial room settings (like max players, game options, etc.)
+     * @param callback Callback with roomId on success, null on failure
+     */
+    override fun createRoom(hostName: String, roomSettings: Map<String, Any>, callback: (String?) -> Unit) {
+        Log.d(TAG, "createRoom: Creating new room with host $hostName")
+        try {
+            // Generate a unique room ID
+            val roomId = generateRoomId()
+            Log.d(TAG, "createRoom: Generated room ID: $roomId")
+
+            // Create initial room state as a Map
+            val initialRoomState = mapOf(
+                "roomId" to roomId,
+                "state" to "WAITING",
+                "hostName" to hostName, // Store host name directly
+                "players" to mapOf<String, Any>(), // Empty players map initially
+                "currentPhase" to "LOBBY",
+                "settings" to roomSettings,
+                "createdAt" to ServerValue.TIMESTAMP
+            )
+            Log.d(TAG, "createRoom: Initial room state created")
+
+            // Create the room in Firebase
+            val roomRef = database.child("rooms").child(roomId)
+            roomRef.setValue(initialRoomState)
+                .addOnSuccessListener {
+                    Log.d(TAG, "createRoom: Room created successfully in Firebase")
+
+                    // Now connect the host to the room
+                    connectToRoom(roomId, hostName) { success ->
+                        Log.d(TAG, "createRoom: connectToRoom callback received with success=$success")
+                        if (success) {
+                            Log.d(TAG, "createRoom: Host connected to room successfully")
+
+                            // Update the hostPlayerId in the room if needed
+                            playerId?.let { hostPlayerId ->
+                                Log.d(TAG, "createRoom: Updating hostPlayerId to $hostPlayerId")
+                                roomRef.child("hostPlayerId").setValue(hostPlayerId)
+                                    .addOnSuccessListener {
+                                        Log.d(TAG, "createRoom: Host ID updated in room")
+                                        callback(roomId)
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e(TAG, "createRoom: Failed to update host ID", e)
+                                        // Still return the room ID as the room was created
+                                        callback(roomId)
+                                    }
+                            } ?: run {
+                                Log.w(TAG, "createRoom: playerId is null, cannot update hostPlayerId")
+                                callback(roomId)
+                            }
+                        } else {
+                            Log.e(TAG, "createRoom: Failed to connect host to room")
+                            // Clean up the created room
+                            roomRef.removeValue()
+                                .addOnCompleteListener {
+                                    Log.d(TAG, "createRoom: Room cleanup completed after failed connection")
+                                    callback(null)
+                                }
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "createRoom: Failed to create room", e)
+                    callback(null)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "createRoom: Exception occurred", e)
+            callback(null)
+        }
+    }
+
+    /**
+     * Generates a random room ID with the option to specify length.
+     * Room IDs are alphanumeric for ease of sharing.
+     */
+    private fun generateRoomId(length: Int = 6): String {
+        val allowedChars = ('A'..'Z') + ('0'..'9')
+        return (1..length)
+            .map { allowedChars.random() }
+            .joinToString("")
+    }
+
+    /**
+     * Gets information about a room by its ID
+     * @param roomId The ID of the room to check
+     * @param callback Callback with room data if it exists, null otherwise
+     */
+    override fun getRoomInfo(roomId: String, callback: (Map<String, Any>?) -> Unit) {
+        Log.d(TAG, "getRoomInfo: Checking if room $roomId exists")
+        try {
+            database.child("rooms").child(roomId).addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        Log.d(TAG, "getRoomInfo: Room exists")
+                        try {
+                            @Suppress("UNCHECKED_CAST")
+                            val roomData = snapshot.getValue() as? Map<String, Any>
+                            callback(roomData)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "getRoomInfo: Error casting data", e)
+                            callback(null)
+                        }
+                    } else {
+                        Log.d(TAG, "getRoomInfo: Room does not exist")
+                        callback(null)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "getRoomInfo: Error checking room", error.toException())
+                    callback(null)
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "getRoomInfo: Exception occurred", e)
+            callback(null)
+        }
+    }
+
+    override fun connectToRoom(roomId: String, playerName: String, callback: (Boolean) -> Unit) {
+        Log.d(TAG, "connectToRoom: Attempting to connect to room $roomId as $playerName")
+        try {
+            // Get reference to the room
+            roomReference = database.child("rooms").child(roomId)
+            Log.d(TAG, "connectToRoom: Room reference created: ${roomReference?.key}")
+
+            // Generate player ID
+            playerId = database.push().key
+            if (playerId == null) {
+                Log.e(TAG, "connectToRoom: Failed to generate player ID")
+                callback(false)
+                return
+            }
+            Log.d(TAG, "connectToRoom: Generated player ID: $playerId")
+
+            // Set up player reference within the room
+            playerReference = roomReference?.child("players")?.child(playerId!!)
+            Log.d(TAG, "connectToRoom: Player reference created")
+
+            // Create player object
+            val player = mapOf(
+                "name" to playerName,
+                "isAlive" to true,
+                "role" to "PAESANO", // Default role, will be assigned by game logic
+                "joinedAt" to ServerValue.TIMESTAMP
+            )
+            Log.d(TAG, "connectToRoom: Player object created")
+
+            // Add player directly to the room's players node
+            playerReference?.setValue(player)
+                ?.addOnSuccessListener {
+                    Log.d(TAG, "connectToRoom: Player added to room successfully")
+                    // Start listening for room updates
+                    startRoomListener(roomId)
+                    // Start listening for messages
+                    startMessagesListener(roomId)
+                    Log.d(TAG, "connectToRoom: Calling callback with success=true")
+                    callback(true)
+                }
+                ?.addOnFailureListener { exception ->
+                    Log.e(TAG, "connectToRoom: Failed to add player to room", exception)
+                    Log.d(TAG, "connectToRoom: Calling callback with success=false")
+                    callback(false)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "connectToRoom: Exception occurred", e)
+            callback(false)
+        }
+    }
+
+    override fun sendMessage(messageType: String, data: Map<String, Any>) {
+        Log.d(TAG, "sendMessage: Attempting to send message of type $messageType")
+        try {
+            val type = MessageType.valueOf(messageType)
+            Log.d(TAG, "sendMessage: Message type parsed successfully")
+            sendMessage(type, data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending message", e)
+        }
+    }
+
+    override fun listenForGameUpdates(updateCallback: (Map<String, Any>) -> Unit) {
+        Log.d(TAG, "listenForGameUpdates: Setting up game update listener")
+        messageHandler.registerCallback(MessageType.GAME_STATE_UPDATE) { message ->
+            Log.d(TAG, "listenForGameUpdates: Received GAME_STATE_UPDATE message")
+            try {
+                @Suppress("UNCHECKED_CAST")
+                val payloadMap = message.payload as? Map<String, Any> ?:
+                messageHandler.json.toJson(message.payload).let {
+                    Log.d(TAG, "listenForGameUpdates: Converting payload using JSON")
+                    @Suppress("UNCHECKED_CAST")
+                    messageHandler.json.fromJson(Map::class.java, it) as Map<String, Any>
+                }
+
+                Log.d(TAG, "listenForGameUpdates: Invoking update callback with payload")
+                updateCallback(payloadMap)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error converting payload", e)
+            }
+        }
+
+        if (roomListener == null && roomReference != null) {
+            Log.d(TAG, "listenForGameUpdates: Room listener not yet set up, initializing")
+            roomReference?.key?.let { roomId ->
+                startRoomListener(roomId)
+            }
+        } else {
+            Log.d(TAG, "listenForGameUpdates: Room listener already set up or room reference is null")
+        }
+    }
+
+    private fun startRoomListener(roomId: String) {
+        Log.d(TAG, "startRoomListener: Setting up room listener for room $roomId")
+        roomListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d(TAG, "startRoomListener.onDataChange: Received data change for room")
+                try {
+                    // Get all data as Map
+                    @Suppress("UNCHECKED_CAST")
+                    val roomData = snapshot.getValue() as? Map<String, Any>
+
+                    if (roomData != null) {
+                        Log.d(TAG, "startRoomListener.onDataChange: Room data parsed")
+
+                        // Create a GameMessage with complete room data
+                        val gameMessage = GameMessage(
+                            type = MessageType.GAME_STATE_UPDATE,
+                            payload = roomData
+                        )
+
+                        // Send the message to the message handler
+                        Log.d(TAG, "startRoomListener.onDataChange: About to route message")
+                        messageHandler.routeMessage(gameMessage)
+                        Log.d(TAG, "startRoomListener.onDataChange: Message routed to handler")
+                    } else {
+                        Log.w(TAG, "startRoomListener.onDataChange: Room data is null")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "startRoomListener.onDataChange: Error processing room data", e)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Handle cancellation
+                Log.e(TAG, "Room listener cancelled: ${error.message}", Exception(error.toException()))
+            }
+        }
+
+        roomReference?.addValueEventListener(roomListener!!)
+        Log.d(TAG, "startRoomListener: Room listener registered")
+    }
+
+    private fun startMessagesListener(roomId: String) {
+        Log.d(TAG, "startMessagesListener: Setting up messages listener for room $roomId")
+        val messagesRef = database.child("rooms").child(roomId).child("messages")
+
+        messagesListener = object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d(TAG, "startMessagesListener.onChildAdded: New message detected")
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    val message = snapshot.getValue(FirebaseMessage::class.java)
+                    if (message != null) {
+                        Log.d(TAG, "startMessagesListener.onChildAdded: Message parsed successfully. Type: ${message.type}")
+                        // Convert Firebase message to GameMessage
+                        try {
+                            val gameMessage = GameMessage(
+                                type = MessageType.valueOf(message.type),
+                                payload = message.data
+                            )
+                            messageHandler.routeMessage(gameMessage)
+                            Log.d(TAG, "startMessagesListener.onChildAdded: Message routed to handler")
+
+                            // Optional: remove messages after processing
+                            snapshot.ref.removeValue()
+                            Log.d(TAG, "startMessagesListener.onChildAdded: Message removed from database after processing")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "startMessagesListener.onChildAdded: Error processing message", e)
+                        }
+                    } else {
+                        Log.w(TAG, "startMessagesListener.onChildAdded: Failed to parse message")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "startMessagesListener.onChildAdded: Error parsing message", e)
+                }
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d(TAG, "startMessagesListener.onChildChanged: Message changed")
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                Log.d(TAG, "startMessagesListener.onChildRemoved: Message removed")
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d(TAG, "startMessagesListener.onChildMoved: Message moved")
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Handle cancellation
+                Log.e(TAG, "Messages listener cancelled: ${error.message}", Exception(error.toException()))
+            }
+        }
+
+        messagesRef.addChildEventListener(messagesListener!!)
+        Log.d(TAG, "startMessagesListener: Messages listener registered")
+    }
+
+    fun sendMessage(messageType: MessageType, data: Any) {
+        Log.d(TAG, "sendMessage: Preparing to send message of type ${messageType.name}")
+        try {
+            // Create Firebase message
+            val firebaseMessage = FirebaseMessage(
+                type = messageType.name,
+                data = data,
+                timestamp = ServerValue.TIMESTAMP
+            )
+            Log.d(TAG, "sendMessage: Firebase message created")
+
+            // Push message to room's messages node
+            if (roomReference == null) {
+                Log.e(TAG, "sendMessage: Room reference is null, cannot send message")
+                return
+            }
+
+            val messageRef = roomReference?.child("messages")?.push()
+            Log.d(TAG, "sendMessage: Message reference created: ${messageRef?.key}")
+
+            messageRef?.setValue(firebaseMessage)
+                ?.addOnSuccessListener {
+                    Log.d(TAG, "sendMessage: Message sent successfully")
+                }
+                ?.addOnFailureListener { e ->
+                    Log.e(TAG, "sendMessage: Failed to send message", e)
+                }
+        } catch (e: Exception) {
+            // Handle error
+            Log.e(TAG, "Error creating or sending message", e)
+        }
+    }
+
+    override fun disconnect() {
+        Log.d(TAG, "disconnect: Disconnecting from Firebase")
+        // Remove listeners
+        if (roomListener != null && roomReference != null) {
+            roomReference?.removeEventListener(roomListener!!)
+            Log.d(TAG, "disconnect: Room listener removed")
+        }
+
+        if (messagesListener != null && roomReference != null) {
+            roomReference?.child("messages")?.removeEventListener(messagesListener!!)
+            Log.d(TAG, "disconnect: Messages listener removed")
+        }
+
+        // Remove player from room
+        playerReference?.let { ref ->
+            ref.removeValue()
+                .addOnSuccessListener {
+                    Log.d(TAG, "disconnect: Player removed from room successfully")
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "disconnect: Failed to remove player from room", e)
+                }
+        }
+
+        Log.d(TAG, "disconnect: Disconnect complete")
+    }
+
+    // Data class for Firebase messages
+    data class FirebaseMessage(
+        val type: String = "",
+        val data: Any = mapOf<String, Any>(),
+        val timestamp: Any? = null
+    )
+}
