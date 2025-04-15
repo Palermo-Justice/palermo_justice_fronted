@@ -12,14 +12,13 @@ abstract class Role(val name: String) {
 //Mafia
 class Mafioso : Role("Mafioso") {
     override val description = "Select a person to kill"
-    override fun performAction(players: List<Player>, target: Player): String? {
+    override fun performAction(players: List<Player>, target: Player): String {
         if (target.isProtected) {
-            println("${target.name} was protected!")
+             return ("${target.name} was protected!")
         } else {
             target.isAlive = false
-            println("${target.name} was killed!")
+             return ("${target.name} was killed!")
         }
-        return null
     }
 }
 //Detective

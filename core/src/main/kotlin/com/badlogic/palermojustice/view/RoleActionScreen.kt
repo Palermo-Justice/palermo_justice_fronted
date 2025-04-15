@@ -13,6 +13,7 @@ import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.controller.GameController
 import com.badlogic.palermojustice.model.GameStateHelper
 import com.badlogic.palermojustice.model.Ispettore
+import com.badlogic.palermojustice.model.Mafioso
 import com.badlogic.palermojustice.model.Player
 
 /**
@@ -25,6 +26,7 @@ class RoleActionScreen : Screen {
     private val gameController = GameController.getInstance()
     private val confirmedPlayers = mutableSetOf<String>()
     private lateinit var confirmCountLabel: Label
+    var announcementText: String? = null
 
     // Store the selected player ID
     private var selectedPlayerId: String? = null
@@ -122,6 +124,11 @@ class RoleActionScreen : Screen {
                             showInfoDialog(result) {}
                             return@clicked
                         }
+
+                        if (result != null && currentPlayer.role is Mafioso) {
+                            announcementText = result
+                            return@clicked
+                        }
                     }
 
                     // When everyone has confirmed, move to next role
@@ -131,8 +138,7 @@ class RoleActionScreen : Screen {
                         if (GameStateHelper.currentRoleIndex < GameStateHelper.roleSequence.size) {
                             Main.instance.setScreen(RoleActionScreen())
                         } else {
-                            val hostName = gameController.model.getPlayers().firstOrNull()?.name ?: ""
-                            Main.instance.setScreen(LobbyScreen("", hostName, true, ""))
+                            Main.instance.setScreen(announcementText?.let { AnnouncementScreen(it) })
                         }
                     }
                 } else {
@@ -168,14 +174,21 @@ class RoleActionScreen : Screen {
      */
     private fun showErrorDialog(message: String) {
         val dialog = Dialog("Error", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.contentTable.add(Label(message, skin, "big")).pad(20f)
         dialog.button("OK")
         dialog.show(stage)
     }
 
     private fun showInfoDialog(message: String, onClose: () -> Unit) {
         val dialog = Dialog("Information", skin)
-        dialog.text(message)
+
+        // Create a label with the message and increase font size
+        val messageLabel = Label(message, skin, "big")
+        messageLabel.setFontScale(2f) // Change to whatever size you want
+        messageLabel.setWrap(true)
+        messageLabel.setAlignment(Align.center)
+
+        dialog.contentTable.add(messageLabel).width(500f).pad(20f).row()
         dialog.button("OK") {
             onClose()
         }

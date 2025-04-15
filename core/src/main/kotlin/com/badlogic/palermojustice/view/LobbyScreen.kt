@@ -191,14 +191,6 @@ class LobbyScreen(
         // Buttons section
         val buttonsTable = Table()
 
-        val rolesButton = TextButton("ROLES", skin)
-        rolesButton.pad(10f)
-        rolesButton.addListener(object : ChangeListener() {
-            override fun changed(event: ChangeEvent, actor: Actor) {
-                Main.instance.setScreen(RolesScreen())
-            }
-        })
-
         val startButton = TextButton("START", skin)
         startButton.pad(10f)
         startButton.isDisabled = !isHost // Only the host can start the game
@@ -213,7 +205,6 @@ class LobbyScreen(
             }
         })
 
-        buttonsTable.add(rolesButton).width(400f).height(200f).padRight(20f)
         buttonsTable.add(startButton).width(400f).height(200f)
 
         // Create a "copy code" button

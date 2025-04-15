@@ -1,5 +1,6 @@
 package com.badlogic.palermojustice.controller
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.palermojustice.model.*
 import com.badlogic.palermojustice.view.GameScreen
 import com.badlogic.palermojustice.firebase.FirebaseInterface
@@ -96,7 +97,9 @@ class GameController private constructor() {
 
         // Update view if initialized
         if (::view.isInitialized) {
-            view.updateDisplay()
+            Gdx.app.postRunnable {
+                view.updateDisplay()
+            }
         }
     }
 
