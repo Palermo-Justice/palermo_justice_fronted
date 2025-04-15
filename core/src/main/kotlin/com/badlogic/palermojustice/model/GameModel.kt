@@ -22,6 +22,7 @@ class Player {
     var role: Role? = null
     var isAlive: Boolean = true
     var isProtected: Boolean = false
+    var confirmed: Boolean = false
 
     constructor()
 
