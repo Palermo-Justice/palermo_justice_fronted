@@ -12,8 +12,9 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.model.GameStateHelper
+import com.badlogic.palermojustice.model.Player
 
-class SleepScreen : Screen {
+class SleepScreen(private val currentPlayer: Player) : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
 
@@ -77,7 +78,7 @@ class SleepScreen : Screen {
         GameStateHelper.resetNightSequence()
 
         // Proceed to first role's action screen
-        Main.instance.setScreen(RoleActionScreen())
+        Main.instance.setScreen(RoleActionScreen(currentPlayer))
     }
 
     override fun render(delta: Float) {

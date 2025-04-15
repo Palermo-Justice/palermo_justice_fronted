@@ -182,7 +182,7 @@ class VotingScreen(private val currentPlayer: Player) : Screen {
     private fun navigateToNextScreen() {
         // First show voting result screen if we had a voted player
         if (votedPlayer != null) {
-            Main.instance.setScreen(VotingResultScreen(votedPlayer))
+            Main.instance.setScreen(VotingResultScreen(votedPlayer, currentPlayer))
             return
         }
 

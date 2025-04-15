@@ -15,7 +15,7 @@ import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.controller.GameController
 import com.badlogic.palermojustice.model.Player
 
-class VotingResultScreen(private val votedPlayer: Player? = null) : Screen {
+class VotingResultScreen(private val votedPlayer: Player? = null, private val currentPlayer: Player) : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
     private val gameController = GameController.getInstance()
@@ -105,7 +105,7 @@ class VotingResultScreen(private val votedPlayer: Player? = null) : Screen {
         } else {
             // Game continues - go to night phase
             gameController.startNightPhase()
-            Main.instance.setScreen(SleepScreen())
+            Main.instance.setScreen(SleepScreen(currentPlayer))
         }
     }
 

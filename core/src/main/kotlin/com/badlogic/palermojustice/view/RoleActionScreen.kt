@@ -58,7 +58,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         } else {
             // Handle the case where we've processed all roles
             Gdx.app.log("RoleActionScreen", "All roles processed, moving to announcement")
-            Main.instance.setScreen(AnnouncementScreen("Night actions complete!"))
+            Main.instance.setScreen(AnnouncementScreen("Night actions complete!", currentPlayer))
             return
         }
 
@@ -262,7 +262,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
             // If we have an announcement text from a Mafioso action, use it
             val finalAnnouncementText = announcementText ?: "The night has passed."
             Gdx.app.log("RoleActionScreen", "Moving to announcement screen with text: $finalAnnouncementText")
-            Main.instance.setScreen(AnnouncementScreen(finalAnnouncementText))
+            Main.instance.setScreen(AnnouncementScreen(finalAnnouncementText, currentPlayer))
         }
     }
 

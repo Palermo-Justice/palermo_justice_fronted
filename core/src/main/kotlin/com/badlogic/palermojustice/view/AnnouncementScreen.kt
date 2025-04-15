@@ -12,8 +12,9 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.controller.GameController
+import com.badlogic.palermojustice.model.Player
 
-class AnnouncementScreen(private val resultText: String) : Screen {
+class AnnouncementScreen(private val resultText: String, private val currentPlayer: Player) : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
 
@@ -78,7 +79,7 @@ class AnnouncementScreen(private val resultText: String) : Screen {
         } else {
             // Game continues - start voting phase
             gameController.model.setPhase(com.badlogic.palermojustice.model.GamePhase.DAY_VOTING)
-            Main.instance.setScreen(VotingScreen())
+            Main.instance.setScreen(VotingScreen(currentPlayer))
         }
     }
 
