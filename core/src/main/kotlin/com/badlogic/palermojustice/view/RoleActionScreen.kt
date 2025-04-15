@@ -174,14 +174,21 @@ class RoleActionScreen : Screen {
      */
     private fun showErrorDialog(message: String) {
         val dialog = Dialog("Error", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.contentTable.add(Label(message, skin, "big")).pad(20f)
         dialog.button("OK")
         dialog.show(stage)
     }
 
     private fun showInfoDialog(message: String, onClose: () -> Unit) {
         val dialog = Dialog("Information", skin)
-        dialog.text(message)
+
+        // Create a label with the message and increase font size
+        val messageLabel = Label(message, skin, "big")
+        messageLabel.setFontScale(2f) // Change to whatever size you want
+        messageLabel.setWrap(true)
+        messageLabel.setAlignment(Align.center)
+
+        dialog.contentTable.add(messageLabel).width(500f).pad(20f).row()
         dialog.button("OK") {
             onClose()
         }
