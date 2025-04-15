@@ -204,7 +204,7 @@ class GameScreen(
             if (showRoleAnimation && !roleAnimationComplete) {
                 elapsed += delta
 
-                if (elapsed >= 2.5f) {
+                if (elapsed >= 1.5f) {
                     dotsStarted = true
                 }
 
@@ -224,8 +224,8 @@ class GameScreen(
                     }
                 }
 
-                // Trigger transition after ~7 seconds
-                if (elapsed >= 7f) {
+                // Trigger transition after ~6 seconds
+                if (elapsed >= 6f) {
                     roleAnimationComplete = true
 
                     // Semplifichiamo questa parte usando direttamente mainTable

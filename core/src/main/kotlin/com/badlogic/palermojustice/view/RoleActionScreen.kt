@@ -12,6 +12,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.controller.GameController
 import com.badlogic.palermojustice.model.GameStateHelper
+import com.badlogic.palermojustice.model.Ispettore
 import com.badlogic.palermojustice.model.Player
 
 /**
@@ -22,6 +23,8 @@ class RoleActionScreen : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
     private val gameController = GameController.getInstance()
+    private val confirmedPlayers = mutableSetOf<String>()
+    private lateinit var confirmCountLabel: Label
 
     // Store the selected player ID
     private var selectedPlayerId: String? = null
@@ -66,7 +69,6 @@ class RoleActionScreen : Screen {
 
         // Get all players from the GameModel
         val players = gameController.model.getPlayers()
-        val selectedPlayerId = arrayOf<String?>(null)
 
         // ButtonGroup to allow only one selected at a time
         val buttonGroup = ButtonGroup<TextButton>()
@@ -80,8 +82,8 @@ class RoleActionScreen : Screen {
 
             playerButton.addListener(object : ClickListener() {
                 override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                    selectedPlayerId[0] = player.id
-                    println("Selected player: ${player.name}")
+                    selectedPlayerId = player.id
+                    println("Selected player: ${selectedPlayerId}")
                 }
             })
 
@@ -93,39 +95,49 @@ class RoleActionScreen : Screen {
         mainTable.add(playerGrid).padBottom(20f).row()
 
         // Confirm counter label
-        val confirmCountLabel = Label("0 / ${players.size} players confirmed", skin, "big")
+        confirmCountLabel = Label("0 / ${players.size} players confirmed", skin, "big")
         confirmCountLabel.setFontScale(2f)
         mainTable.add(confirmCountLabel).padBottom(20f).row()
 
-        // Keep track of who has confirmed
-        val confirmedPlayers = mutableSetOf<String>()
 
         val confirmButton = TextButton("Confirm", skin)
         confirmButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
                 val targetPlayer = gameController.model.getPlayers()
-                    .find { it.id == selectedPlayerId[0] }
+                    .find { it.id == selectedPlayerId }
+                    println("Target player: ${targetPlayer?.name}")
 
                 // Check if we have both a current player and a selected player
-                if (currentPlayer != null && targetPlayer != null) {
-                    // Perform the role action
-                    GameStateHelper.processNightAction(currentPlayer, targetPlayer)
+                // Prevent duplicate confirms
+                if (currentPlayer != null && !confirmedPlayers.contains(currentPlayer.id)) {
+                    confirmedPlayers.add(currentPlayer.id)
+                    confirmCountLabel.setText("${confirmedPlayers.size} / ${gameController.model.getPlayers().size} players confirmed")
 
-                    // Move to next role in sequence
-                    GameStateHelper.currentRoleIndex++
+                    // Only perform action if player has this role
+                    if (targetPlayer != null && currentPlayer.role?.name == currentRoleName) {
+                        val result = GameStateHelper.processNightAction(currentPlayer, targetPlayer)
 
-                    if (GameStateHelper.currentRoleIndex < GameStateHelper.roleSequence.size) {
-                        // Go to next role's action screen
-                        Main.instance.setScreen(RoleActionScreen())
-                    } else {
-                        // All night actions completed, go to next phase
-                        // For testing, we'll go back to lobby
-                        val hostName = gameController.model.getPlayers().firstOrNull()?.name ?: ""
-                        Main.instance.setScreen(LobbyScreen("", hostName, true, ""))
+                        if (result != null && currentPlayer.role is Ispettore) {
+                            println("currentPlayer is ${(currentPlayer.name)}")
+                            showInfoDialog(result) {}
+                            return@clicked
+                        }
+                    }
+
+                    // When everyone has confirmed, move to next role
+                    if (confirmedPlayers.size == gameController.model.getPlayers().size) {
+                        GameStateHelper.currentRoleIndex++
+
+                        if (GameStateHelper.currentRoleIndex < GameStateHelper.roleSequence.size) {
+                            Main.instance.setScreen(RoleActionScreen())
+                        } else {
+                            val hostName = gameController.model.getPlayers().firstOrNull()?.name ?: ""
+                            Main.instance.setScreen(LobbyScreen("", hostName, true, ""))
+                        }
                     }
                 } else {
                     // Show error message
-                    showErrorDialog("Please select a valid target")
+                    showErrorDialog("You can only confirm once per night!")
                 }
             }
         })
@@ -158,6 +170,15 @@ class RoleActionScreen : Screen {
         val dialog = Dialog("Error", skin)
         dialog.contentTable.add(Label(message, skin)).pad(20f)
         dialog.button("OK")
+        dialog.show(stage)
+    }
+
+    private fun showInfoDialog(message: String, onClose: () -> Unit) {
+        val dialog = Dialog("Information", skin)
+        dialog.text(message)
+        dialog.button("OK") {
+            onClose()
+        }
         dialog.show(stage)
     }
 

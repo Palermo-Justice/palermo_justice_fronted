@@ -213,8 +213,8 @@ class LobbyScreen(
             }
         })
 
-        buttonsTable.add(rolesButton).width(150f).padRight(20f)
-        buttonsTable.add(startButton).width(150f)
+        buttonsTable.add(rolesButton).width(400f).height(200f).padRight(20f)
+        buttonsTable.add(startButton).width(400f).height(200f)
 
         // Create a "copy code" button
         val copyButton = TextButton("Copy Code", skin)

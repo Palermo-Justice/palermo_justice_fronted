@@ -79,17 +79,15 @@ object GameStateHelper {
      * @param targetPlayer The target of the action
      * @return True if the action was processed successfully
      */
-    fun processNightAction(actingPlayer: Player, targetPlayer: Player): Boolean {
+    fun processNightAction(actingPlayer: Player, targetPlayer: Player): String? {
         if (actingPlayer.role == null) {
-            return false
+            return ""
         }
 
         // Let the role handle the action
-        actingPlayer.role!!.performAction(
+        return actingPlayer.role!!.performAction(
             GameController.getInstance().model.getPlayers(),
             targetPlayer
         )
-
-        return true
     }
 }
