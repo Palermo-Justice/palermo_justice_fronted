@@ -31,13 +31,17 @@ class LobbyScreen(
     // Store pending player updates until UI is ready
     private var pendingPlayersList: List<String>? = null
 
+    // Test mode settings
+    private val useTestPlayers = true
+    private var autoStartTimer = 0f
+    private val autoStartDelay = 3f // 3 seconds before auto starting the game
+
     // Controllers for logic
     private lateinit var controller: LobbyController
     private val gameController = GameController.getInstance()
 
     // Test players list for offline testing
     private val testPlayersList = mutableListOf<String>()
-    private val useTestPlayers = true // Set to false to use real Firebase data
 
     override fun show() {
         // First initialize the UI
@@ -223,7 +227,7 @@ class LobbyScreen(
 
         // Debug info for test players
         if (useTestPlayers) {
-            val debugInfoLabel = Label("RUNNING IN TEST MODE", skin)
+            val debugInfoLabel = Label("RUNNING IN TEST MODE - Auto starting in ${autoStartDelay.toInt()} seconds", skin)
             debugInfoLabel.setColor(1f, 0f, 0f, 1f) // Red color for testing
             mainTable.add(debugInfoLabel).padTop(5f).row()
         }
@@ -259,6 +263,20 @@ class LobbyScreen(
     override fun render(delta: Float) {
         Gdx.gl.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+        // Handle auto-start in test mode
+        if (useTestPlayers && isHost) {
+            autoStartTimer += delta
+            if (autoStartTimer >= autoStartDelay) {
+                // Auto start the game
+                if (this::controller.isInitialized) {
+                    controller.startGame()
+                } else {
+                    // Start game directly for test mode
+                    navigateToGameScreen(roomId, playerName, isHost)
+                }
+            }
+        }
 
         stage.act(delta)
         stage.draw()

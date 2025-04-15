@@ -24,6 +24,15 @@ class VotingScreen : Screen {
     private var votedPlayer: Player? = null
     private val gameController = GameController.getInstance()
 
+    // Test mode settings
+    private val useTestMode = true
+    private var autoVoteTimer = 0f
+    private val autoVoteDelay = 3f // 3 seconds before auto voting
+    private var autoConfirmTimer = 0f
+    private val autoConfirmDelay = 2f // 2 seconds before auto confirming
+    private var hasVoted = false
+    private var hasConfirmed = false
+
     override fun show() {
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
@@ -46,35 +55,48 @@ class VotingScreen : Screen {
         promptLabel.setFontScale(5f)
         mainTable.add(promptLabel).expandX().padBottom(30f).row()
 
-        val buttons = mutableMapOf<Player, ImageButton>()
-        val redTarget = Texture(Gdx.files.internal("redtarget.jpg"))
-        val blackTarget = Texture(Gdx.files.internal("target.png"))
-
         // Get living players from GameModel through GameController
         val livingPlayers = gameController.model.getLivingPlayers()
+
+        if (livingPlayers.isEmpty()) {
+            mainTable.add(Label("No living players to vote for!", skin, "big")).padBottom(20f).row()
+
+            val skipButton = TextButton("Skip Voting", skin)
+            skipButton.addListener(object : ChangeListener() {
+                override fun changed(event: ChangeEvent, actor: Actor) {
+                    navigateToNextScreen()
+                }
+            })
+            mainTable.add(skipButton).width(200f).height(60f).padTop(20f).row()
+            return
+        }
+
+        val buttons = mutableMapOf<Player, TextButton>()
+        val playersTable = Table()
 
         livingPlayers.forEach { player ->
             val row = Table()
 
             val voteLabel = Label(player.name, skin, "alt")
-            voteLabel.setFontScale(5f)
+            voteLabel.setFontScale(3f)
             voteLabel.setAlignment(Align.left)
 
-            val image = Image(blackTarget)
-            val voteButton = ImageButton(image.drawable)
-
+            val voteButton = TextButton("Vote", skin)
             voteButton.addListener(object : ChangeListener() {
                 override fun changed(event: ChangeEvent, actor: Actor) {
                     if (votedPlayer == null) {
                         votedPlayer = player
+
+                        // Update UI to show selection
                         buttons.forEach { (p, btn) ->
                             btn.isDisabled = true
                             if (p == player) {
-                                btn.style.imageUp = Image(redTarget).drawable
-                                btn.image.drawable = Image(redTarget).drawable
+                                btn.setText("Selected")
                             }
                         }
+
                         promptLabel.setText("You voted for ${player.name}")
+                        hasVoted = true
 
                         // Submit vote to the game controller
                         gameController.vote(player.id)
@@ -88,15 +110,18 @@ class VotingScreen : Screen {
             buttons[player] = voteButton
 
             row.add(voteLabel).expandX().left().padLeft(20f)
-            row.add(voteButton).pad(10f).size(100f, 100f).right().padRight(20f)
+            row.add(voteButton).pad(10f).size(150f, 60f).right().padRight(20f)
 
-            mainTable.add(row).expandX().fillX().padBottom(10f).row()
+            playersTable.add(row).expandX().fillX().padBottom(10f).row()
         }
 
-        // Add skip button if needed (e.g., for testing)
+        mainTable.add(playersTable).expandX().fillX().padBottom(20f).row()
+
+        // Add skip button
         val skipButton = TextButton("Skip Vote", skin)
         skipButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
+                hasVoted = true
                 addConfirmButton(mainTable)
             }
         })
@@ -105,6 +130,13 @@ class VotingScreen : Screen {
         val buttonRow = Table()
         buttonRow.add(skipButton).width(200f).height(60f)
         mainTable.add(buttonRow).padTop(30f).row()
+
+        // Add test mode indicator
+        if (useTestMode) {
+            val testModeLabel = Label("TEST MODE - Auto voting in ${autoVoteDelay.toInt()} seconds", skin, "big")
+            testModeLabel.setColor(1f, 0f, 0f, 1f) // Red color
+            mainTable.add(testModeLabel).padTop(20f).row()
+        }
     }
 
     /**
@@ -114,10 +146,8 @@ class VotingScreen : Screen {
         val confirmButton = TextButton("Confirm", skin)
         confirmButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
-                // Process the vote result
                 processVoteResult()
-
-                // Move to next phase or screen
+                hasConfirmed = true
                 navigateToNextScreen()
             }
         })
@@ -126,6 +156,13 @@ class VotingScreen : Screen {
         val confirmRow = Table()
         confirmRow.add(confirmButton).width(200f).height(60f)
         table.add(confirmRow).padTop(30f).row()
+
+        // Add test mode indicator for confirmation
+        if (useTestMode) {
+            val testModeLabel = Label("TEST MODE - Auto confirming in ${autoConfirmDelay.toInt()} seconds", skin, "big")
+            testModeLabel.setColor(1f, 0f, 0f, 1f) // Red color
+            table.add(testModeLabel).padTop(20f).row()
+        }
     }
 
     /**
@@ -135,10 +172,7 @@ class VotingScreen : Screen {
         // If a player was voted for, mark them as dead
         votedPlayer?.let { player ->
             player.die()
-
-            // Here you would normally send this to the server
-            // For now, just update the local model
-            // This would be handled by the controller in a networked game
+            println("Player ${player.name} with role ${player.role?.name} has been eliminated by voting")
         }
     }
 
@@ -146,6 +180,12 @@ class VotingScreen : Screen {
      * Navigate to the next screen based on game state
      */
     private fun navigateToNextScreen() {
+        // First show voting result screen if we had a voted player
+        if (votedPlayer != null) {
+            Main.instance.setScreen(VotingResultScreen(votedPlayer))
+            return
+        }
+
         // Check if game is over based on voting result
         if (gameController.model.getMafiosi().isEmpty()) {
             // Citizens win
@@ -156,13 +196,47 @@ class VotingScreen : Screen {
         } else {
             // Game continues - go to night phase
             gameController.startNightPhase()
-            Main.instance.setScreen(RoleActionScreen())
+            Main.instance.setScreen(SleepScreen())
         }
     }
 
     override fun render(delta: Float) {
         Gdx.gl.glClearColor(0.95f, 0.95f, 0.95f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+        // Handle auto-voting in test mode
+        if (useTestMode) {
+            if (!hasVoted) {
+                autoVoteTimer += delta
+                if (autoVoteTimer >= autoVoteDelay) {
+                    // Auto vote for a random player
+                    val livingPlayers = gameController.model.getLivingPlayers()
+                    if (livingPlayers.isNotEmpty()) {
+                        // Choose a mafia player to vote for if possible (to advance the game)
+                        val targetPlayer = livingPlayers.find { it.role?.name == "Mafioso" } ?: livingPlayers.first()
+
+                        votedPlayer = targetPlayer
+                        hasVoted = true
+
+                        println("TEST MODE: Auto-voted for player ${targetPlayer.name} with role ${targetPlayer.role?.name}")
+
+                        // Submit vote to the game controller
+                        gameController.vote(targetPlayer.id)
+
+                        // Add confirm button
+                        addConfirmButton(stage.actors.first() as Table)
+                    }
+                }
+            } else if (!hasConfirmed) {
+                autoConfirmTimer += delta
+                if (autoConfirmTimer >= autoConfirmDelay) {
+                    processVoteResult()
+                    hasConfirmed = true
+                    navigateToNextScreen()
+                }
+            }
+        }
+
         stage.act(delta)
         stage.draw()
     }

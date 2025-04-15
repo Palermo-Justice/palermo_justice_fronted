@@ -21,6 +21,11 @@ class FinalResultScreen : Screen {
     private lateinit var skin: Skin
     private val gameController = GameController.getInstance()
 
+    // Test mode settings
+    private val useTestMode = true
+    private var autoTransitionTimer = 0f
+    private val autoTransitionDelay = 5f // 5 seconds before auto transition
+
     override fun show() {
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
@@ -97,7 +102,6 @@ class FinalResultScreen : Screen {
         }
 
         // Add button to return to main menu
-        val buttonRow = Table()
         val mainMenuButton = TextButton("Return to Main Menu", skin)
         mainMenuButton.addListener(object : ChangeListener() {
             override fun changed(event: ChangeEvent, actor: Actor) {
@@ -105,8 +109,14 @@ class FinalResultScreen : Screen {
             }
         })
 
-        buttonRow.add(mainMenuButton).width(250f).height(60f)
-        mainTable.add(buttonRow).padTop(30f)
+        mainTable.add(mainMenuButton).width(300f).height(100f).padTop(30f).row()
+
+        // Add test mode indicator
+        if (useTestMode) {
+            val testModeLabel = Label("TEST MODE - Auto returning to menu in ${autoTransitionDelay.toInt()} seconds", skin, "big")
+            testModeLabel.setColor(1f, 0f, 0f, 1f) // Red color
+            mainTable.add(testModeLabel).padTop(20f).row()
+        }
     }
 
     /**
@@ -131,6 +141,15 @@ class FinalResultScreen : Screen {
     override fun render(delta: Float) {
         Gdx.gl.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+        // Handle auto-transition in test mode
+        if (useTestMode) {
+            autoTransitionTimer += delta
+            if (autoTransitionTimer >= autoTransitionDelay) {
+                Main.instance.setScreen(HomeScreen())
+            }
+        }
+
         stage.act(delta)
         stage.draw()
     }
