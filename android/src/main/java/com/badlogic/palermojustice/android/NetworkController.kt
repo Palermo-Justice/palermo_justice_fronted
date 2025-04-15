@@ -317,6 +317,21 @@ class NetworkController private constructor(private val context: Context) : Fire
                         Log.d(TAG, "startMessagesListener.onChildAdded: Message parsed successfully. Type: ${message.type}")
                         // Convert Firebase message to GameMessage
                         try {
+                            // Add this section to specifically handle START_GAME messages
+                            if (message.type == "START_GAME") {
+                                Log.d(TAG, "startMessagesListener.onChildAdded: Received START_GAME message")
+
+                                // Directly update the room state to RUNNING
+                                roomReference?.child("state")?.setValue("RUNNING")
+                                    ?.addOnSuccessListener {
+                                        Log.d(TAG, "startMessagesListener.onChildAdded: Room state updated to RUNNING")
+                                    }
+                                    ?.addOnFailureListener { e ->
+                                        Log.e(TAG, "startMessagesListener.onChildAdded: Failed to update room state", e)
+                                    }
+                            }
+
+                            // Continue with normal message handling
                             val gameMessage = GameMessage(
                                 type = MessageType.valueOf(message.type),
                                 payload = message.data
