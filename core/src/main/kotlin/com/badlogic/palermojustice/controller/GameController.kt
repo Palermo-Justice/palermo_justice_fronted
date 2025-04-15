@@ -48,19 +48,32 @@ class GameController private constructor() {
      * Start a new game
      */
     fun startGame() {
-        // Send start request to server
-        // Make sure networkController is initialized before using it
-        if (::networkController.isInitialized) {
-            // Prepare game state data
-            val playerNames = model.getPlayerNames()
-            val gameData = mapOf(
-                "state" to "RUNNING",
-                "currentPhase" to "STARTING",
-                "playerList" to playerNames
-            )
+        // First assign roles to all players
+        model.assignRoles()
 
-            // Send the start game message
+        // Prepare player data with their assigned roles
+        val playersData = model.getPlayers().associate { player ->
+            player.id to mapOf(
+                "name" to player.name,
+                "role" to (player.role?.name ?: "Paesano"),
+                "isAlive" to player.isAlive,
+                "isProtected" to player.isProtected
+            )
+        }
+
+        // Prepare complete game data
+        val gameData = mapOf(
+            "state" to "RUNNING",
+            "currentPhase" to "STARTING",
+            "players" to playersData  // Include complete player data with roles
+        )
+
+        // Send the start game message with all data
+        if (::networkController.isInitialized) {
             networkController.sendMessage("START_GAME", gameData)
+
+            // Also send a game state update to ensure synchronization
+            networkController.sendMessage("GAME_STATE_UPDATE", gameData)
         }
     }
 

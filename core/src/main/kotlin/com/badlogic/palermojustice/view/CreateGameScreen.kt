@@ -7,6 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.firebase.FirebaseInterface
@@ -107,6 +108,10 @@ class CreateGameScreen : Screen {
                         Main.instance.setScreen(LobbyScreen(debugRoomId, playerName, true, gameName))
                     }
                 })
+                // Set button padding before adding it to the dialog
+                debugButton.pad(15f)
+                debugButton.getPrefWidth()
+                debugButton.getPrefHeight()
                 loadingDialog.button(debugButton)
 
                 Main.instance.firebaseInterface.createRoom(playerName, roomSettings) { roomId ->
@@ -155,17 +160,81 @@ class CreateGameScreen : Screen {
         skin.dispose()
     }
 
+    /**
+     * Shows an error dialog with large, readable text and improved size
+     *
+     * @param message The error message to display
+     * @return The dialog instance that was created
+     */
     private fun showErrorDialog(message: String): Dialog {
-        val dialog = Dialog("Error", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f)
-        dialog.button("OK")
+        // Create a Dialog with custom title
+        val dialog = Dialog("", skin)
+
+        // Create a larger custom title
+        val titleLabel = Label("ERROR", skin, "title")
+        titleLabel.setFontScale(2f)
+        titleLabel.setAlignment(Align.center)
+        dialog.getTitleTable().add(titleLabel).padTop(20f).padBottom(20f)
+
+        // Create a label with enlarged text for the message
+        val messageLabel = Label(message, skin, "big")
+        messageLabel.setFontScale(2f)
+        messageLabel.setAlignment(Align.center)
+        messageLabel.setWrap(true)
+
+        // Add the label to a container with fixed width for proper text wrapping
+        dialog.contentTable.add(messageLabel).width(600f).pad(40f).row()
+
+        // Set minimum dimensions for the dialog
+        dialog.setWidth(700f)
+        dialog.setHeight(300f)
+
+        // Get the OK button
+        val buttonTable = dialog.button("OK").padBottom(20f)
+
+        // Customize the button
+        val okButton = buttonTable.getCells().first().getActor() as TextButton
+        okButton.pad(15f)
+        okButton.label.setFontScale(1.5f)
+
+        // Center the dialog on screen
+        dialog.setPosition(
+            (Gdx.graphics.width - dialog.width) / 2,
+            (Gdx.graphics.height - dialog.height) / 2
+        )
+
         dialog.show(stage)
         return dialog
     }
 
+    /**
+     * Shows a loading dialog with large text and improved size
+     *
+     * @param message The loading message to display
+     * @return The dialog instance that was created
+     */
     private fun showLoadingDialog(message: String): Dialog {
+        // Create a Dialog with empty title
         val dialog = Dialog("", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f)
+
+        // Create a label with enlarged text for the loading message
+        val loadingLabel = Label(message, skin, "big")
+        loadingLabel.setFontScale(2.5f)
+        loadingLabel.setAlignment(Align.center)
+
+        // Add the label with extra padding
+        dialog.contentTable.add(loadingLabel).width(600f).pad(50f).row()
+
+        // Set minimum dimensions for the dialog
+        dialog.setWidth(700f)
+        dialog.setHeight(300f)
+
+        // Center the dialog on screen
+        dialog.setPosition(
+            (Gdx.graphics.width - dialog.width) / 2,
+            (Gdx.graphics.height - dialog.height) / 2
+        )
+
         dialog.show(stage)
         return dialog
     }

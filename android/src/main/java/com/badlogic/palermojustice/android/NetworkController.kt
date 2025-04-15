@@ -194,7 +194,7 @@ class NetworkController private constructor(private val context: Context) : Fire
             val player = mapOf(
                 "name" to playerName,
                 "isAlive" to true,
-                "role" to "PAESANO", // Default role, will be assigned by game logic
+                //"role" to "MAFIOSO", // Default role, will be assigned by game logic
                 "joinedAt" to ServerValue.TIMESTAMP
             )
             Log.d(TAG, "connectToRoom: Player object created")

@@ -197,20 +197,33 @@ class LobbyController(
     fun startGame() {
         val players = gameController.model.getPlayers()
         if (isHost && players.size >= 3) { // Minimum 3 players to start
-            // Send two updates to ensure all clients receive notification
+            // Assign roles to players
+            gameController.model.assignRoles()
 
-            // First update the room state to RUNNING
+            // Prepare player data with their assigned roles
+            val playersData = gameController.model.getPlayers().associate { player ->
+                player.id to mapOf(
+                    "name" to player.name,
+                    "role" to (player.role?.name ?: "Paesano"),
+                    "isAlive" to player.isAlive,
+                    "isProtected" to player.isProtected
+                )
+            }
+
+            // First update the room state to RUNNING with player roles
             val updateData = mapOf(
                 "state" to "RUNNING",
-                "currentPhase" to "STARTING"
+                "currentPhase" to "STARTING",
+                "players" to playersData
             )
             networkController.sendMessage("GAME_STATE_UPDATE", updateData)
 
-            // Then send the START_GAME message with player list to trigger listeners
+            // Then send the START_GAME message with full player data
             val gameData = mapOf(
                 "state" to "RUNNING",
                 "currentPhase" to "STARTING",
-                "playerList" to gameController.model.getPlayerNames()
+                "playerList" to gameController.model.getPlayerNames(),
+                "players" to playersData
             )
             networkController.sendMessage("START_GAME", gameData)
 
