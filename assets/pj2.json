@@ -214,7 +214,7 @@
   }
   com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle: {
     default: {
-      font: font
+      font: button
       fontColor: black
       background: text-field
       cursor: cursor
@@ -222,7 +222,7 @@
       messageFontColor: gray
     },
     custom: {
-      font: font
+      font: button
       fontColor: black
       background: roles_box
       cursor: cursor

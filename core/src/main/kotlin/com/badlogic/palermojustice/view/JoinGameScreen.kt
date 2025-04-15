@@ -41,19 +41,19 @@ class JoinGameScreen : Screen {
 
         // Room Code field
         val roomCodeLabel = Label("Room Code", skin)
-        roomCodeLabel.setFontScale(1.2f)
+        roomCodeLabel.setFontScale(5f)
         mainTable.add(roomCodeLabel).left().padBottom(10f).row()
 
         roomCodeField = TextField("", skin, "custom")
-        mainTable.add(roomCodeField).fillX().size(540f, 150f).padBottom(30f).row()
+        mainTable.add(roomCodeField).fillX().height(100f).padBottom(30f).row()
 
         // Player name field
         val playerNameLabel = Label("Your Name", skin)
-        playerNameLabel.setFontScale(1.2f)
+        playerNameLabel.setFontScale(5f)
         mainTable.add(playerNameLabel).left().padBottom(10f).row()
 
-        playerNameField = TextField("", skin)
-        mainTable.add(playerNameField).fillX().height(50f).padBottom(50f).row()
+        playerNameField = TextField("", skin, "custom")
+        mainTable.add(playerNameField).fillX().height(100f).padBottom(50f).row()
 
         // Lower buttons
         val buttonsTable = Table()
@@ -126,8 +126,8 @@ class JoinGameScreen : Screen {
             }
         })
 
-        buttonsTable.add(backButton).width(150f).padRight(20f)
-        buttonsTable.add(joinButton).width(150f)
+        buttonsTable.add(backButton).size(450f, 150f).padRight(20f)
+        buttonsTable.add(joinButton).size(450f, 150f)
 
         mainTable.add(buttonsTable).fillX()
     }

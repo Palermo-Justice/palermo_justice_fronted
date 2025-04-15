@@ -46,24 +46,24 @@ class CreateGameScreen : Screen {
         mainTable.add(gameNameLabel).left().padBottom(10f).row()
 
         gameNameField = TextField("", skin, "custom")
-        mainTable.add(gameNameField).fillX().size(540f, 150f).padBottom(30f).row()
+        mainTable.add(gameNameField).fillX().height(100f).padBottom(50f).row()
 
         // Select players number
         val playerCountLabel = Label("Choose number of players", skin)
-        playerCountLabel.setFontScale(3f)
+        playerCountLabel.setFontScale(5f)
         mainTable.add(playerCountLabel).left().padBottom(10f).row()
 
         playerCountSelectBox = SelectBox<String>(skin, "big")
-        playerCountSelectBox.setItems("3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
+        playerCountSelectBox.setItems("3", "4", "5", "6", "7")
         playerCountSelectBox.selected = "5"
-        mainTable.add(playerCountSelectBox).left().width(200f).height(80f).padBottom(30f).row()
+        mainTable.add(playerCountSelectBox).width(200f).height(80f).padBottom(50f).row()
 
         // Player name field
         val playerNameLabel = Label("My player name", skin)
-        playerNameLabel.setFontScale(3f)
+        playerNameLabel.setFontScale(5f)
         mainTable.add(playerNameLabel).left().padBottom(10f).row()
 
-        playerNameField = TextField("", skin)
+        playerNameField = TextField("", skin, "custom")
         mainTable.add(playerNameField).fillX().height(100f).padBottom(50f).row()
 
         // Lower buttons
@@ -128,8 +128,8 @@ class CreateGameScreen : Screen {
             }
         })
 
-        buttonsTable.add(backButton).width(150f).padRight(20f)
-        buttonsTable.add(createButton).width(150f)
+        buttonsTable.add(backButton).size(450f, 150f).padRight(20f)
+        buttonsTable.add(createButton).size(450f, 150f)
 
         mainTable.add(buttonsTable).fillX()
     }
@@ -157,7 +157,7 @@ class CreateGameScreen : Screen {
 
     private fun showErrorDialog(message: String): Dialog {
         val dialog = Dialog("Error", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f).size(500f, 500f)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
         dialog.button("OK")
         dialog.show(stage)
         return dialog
@@ -165,7 +165,7 @@ class CreateGameScreen : Screen {
 
     private fun showLoadingDialog(message: String): Dialog {
         val dialog = Dialog("", skin)
-        dialog.contentTable.add(Label(message, skin)).pad(20f).size(500f, 500f)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
         dialog.show(stage)
         return dialog
     }

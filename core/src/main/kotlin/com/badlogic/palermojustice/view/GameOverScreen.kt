@@ -24,7 +24,7 @@ class GameOverScreen(private val winner: String) : Screen {
     private fun createUI() {
         val rootTable = Table()
         rootTable.setFillParent(true)
-        rootTable.align(Align.center) // ✨ vertically centers the content
+        rootTable.align(Align.center) // vertically centers the content
         stage.addActor(rootTable)
 
         // This table holds just the inner content
