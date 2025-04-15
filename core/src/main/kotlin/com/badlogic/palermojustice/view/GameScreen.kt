@@ -11,7 +11,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener
 import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
-import com.badlogic.palermojustice.model.GameModel
+import com.badlogic.palermojustice.controller.GameController
 import com.badlogic.palermojustice.model.Player
 
 class GameScreen(
@@ -25,9 +25,13 @@ class GameScreen(
     private lateinit var phaseLabel: Label
     private lateinit var statusLabel: Label
     private lateinit var waitingLabel: Label
-    private lateinit var mainTable: Table  // Aggiungiamo un riferimento alla tabella principale
+    private lateinit var mainTable: Table
     private var playerRole: String = "Unknown"
     private var currentPhase: String = "Waiting"
+
+    // Reference to the game controller
+    private val gameController = GameController.getInstance()
+    private var currentPlayer: Player? = null
 
     // Animation variables added from colleague's version
     private var elapsed = 0f
@@ -42,10 +46,41 @@ class GameScreen(
 
         skin = Skin(Gdx.files.internal("pj2.json"))
 
+        // Set up the connection between this view and the controller
+        gameController.view = this
+
+        // Initialize with player data from the model
+        initializePlayerData()
+
         createUI()
 
         // Start listening for game updates
         setupGameUpdates()
+    }
+
+    /**
+     * Initialize player data from the game model
+     */
+    private fun initializePlayerData() {
+        // Store the current player ID in the model
+        gameController.model.roomId = roomId
+
+        // Find or create the player in the model
+        currentPlayer = gameController.model.getPlayerByName(playerName)
+
+        if (currentPlayer == null) {
+            // If player doesn't exist yet, add them
+            currentPlayer = gameController.model.addPlayerByName(playerName)
+        }
+
+        // Store current player ID in model for reference
+        gameController.model.currentPlayerId = currentPlayer?.id ?: ""
+
+        // Get the player's role if assigned
+        currentPlayer?.role?.let { role ->
+            playerRole = role.name
+            gameController.model.currentPlayerRole = role
+        }
     }
 
     private fun setupGameUpdates() {
@@ -58,6 +93,9 @@ class GameScreen(
     }
 
     private fun handleGameUpdate(gameData: Map<String, Any>) {
+        // Update the model with all game data
+        gameController.updateGameState(gameData)
+
         // Extract data relevant to the current player and game state
         val phase = gameData["currentPhase"] as? String ?: "Unknown"
         currentPhase = phase
@@ -69,11 +107,14 @@ class GameScreen(
             val name = player["name"] as? String ?: return@forEach
 
             if (name == playerName) {
-                playerRole = player["role"] as? String ?: "Unknown"
+                val roleStr = player["role"] as? String ?: "Unknown"
                 val isAlive = player["isAlive"] as? Boolean ?: true
 
+                // Update local role variable
+                playerRole = roleStr
+
                 // Update UI for this player
-                updatePlayerUI(playerRole, isAlive)
+                updatePlayerUI(roleStr, isAlive)
             }
         }
 
@@ -100,9 +141,9 @@ class GameScreen(
 
     private fun createUI() {
         // main table for the entire screen
-        mainTable = Table()  // Inizializziamo la variabile mainTable
+        mainTable = Table()
         mainTable.setFillParent(true)
-        mainTable.name = "mainTable"  // Assegniamo un nome per poterla recuperare
+        mainTable.name = "mainTable"
         stage.addActor(mainTable)
 
         if (showRoleAnimation) {
@@ -173,7 +214,8 @@ class GameScreen(
         val actionsLabel = Label("Actions:", skin, "title")
         actionsTable.add(actionsLabel).left().padBottom(10f).row()
 
-        // Will be populated dynamically based on role and phase
+        // Add action buttons based on phase and role
+        addActionButtons(actionsTable)
 
         // Add a button to leave the game
         val leaveButton = TextButton("Leave Game", skin)
@@ -193,6 +235,65 @@ class GameScreen(
         table.add(phaseTable).fillX().padBottom(20f).row()
         table.add(actionsTable).fillX().expandY().top().padBottom(20f).row()
         table.add(leaveButton).width(150f).padBottom(20f)
+    }
+
+    /**
+     * Add action buttons based on current phase and player role
+     */
+    private fun addActionButtons(actionsTable: Table) {
+        when (currentPhase) {
+            "NIGHT" -> {
+                if (currentPlayer?.isAlive == true) {
+                    val nightActionButton = TextButton("Perform Night Action", skin)
+                    nightActionButton.addListener(object : ChangeListener() {
+                        override fun changed(event: ChangeEvent, actor: Actor) {
+                            Main.instance.setScreen(RoleActionScreen())
+                        }
+                    })
+                    actionsTable.add(nightActionButton).width(200f).height(50f).padBottom(10f).row()
+                }
+            }
+            "DAY_DISCUSSION" -> {
+                // Add day discussion phase buttons
+                val discussionButton = TextButton("End Discussion", skin)
+                discussionButton.addListener(object : ChangeListener() {
+                    override fun changed(event: ChangeEvent, actor: Actor) {
+                        // Only host can move to next phase
+                        if (isHost) {
+                            // Move to voting phase
+                            val nextPhaseData = mapOf(
+                                "currentPhase" to "DAY_VOTING"
+                            )
+                            Main.instance.firebaseInterface.sendMessage("GAME_STATE_UPDATE", nextPhaseData)
+                        } else {
+                            showMessage("Only the host can end the discussion phase")
+                        }
+                    }
+                })
+                actionsTable.add(discussionButton).width(200f).height(50f).padBottom(10f).row()
+            }
+            "DAY_VOTING" -> {
+                if (currentPlayer?.isAlive == true) {
+                    val voteButton = TextButton("Vote", skin)
+                    voteButton.addListener(object : ChangeListener() {
+                        override fun changed(event: ChangeEvent, actor: Actor) {
+                            Main.instance.setScreen(VotingScreen())
+                        }
+                    })
+                    actionsTable.add(voteButton).width(200f).height(50f).padBottom(10f).row()
+                }
+            }
+        }
+    }
+
+    /**
+     * Show a message dialog
+     */
+    private fun showMessage(message: String) {
+        val dialog = Dialog("", skin)
+        dialog.contentTable.add(Label(message, skin)).pad(20f)
+        dialog.button("OK")
+        dialog.show(stage)
     }
 
     override fun render(delta: Float) {
@@ -257,46 +358,34 @@ class GameScreen(
 
         phaseLabel.setText(phase)
 
-        // Additional UI updates based on the phase
-        when (phase) {
-            "NIGHT" -> {
-                // Night phase UI adjustments
-                phaseLabel.style = skin.get("title", Label.LabelStyle::class.java)
-                // Add night-specific actions based on role
-                updateActionsForNight()
-            }
-            "DAY" -> {
-                // Day phase UI adjustments
-                phaseLabel.style = skin.get("default", Label.LabelStyle::class.java)
-                // Add day-specific actions
-                updateActionsForDay()
-            }
-            "VOTE" -> {
-                // Voting phase UI adjustments
-                // Add voting UI
-                updateActionsForVoting()
-            }
-            else -> {
-                // Default phase handling
-            }
-        }
+        // Recreate the UI to update action buttons
+        createGameUI(mainTable)
     }
 
     private fun updateActionsForNight() {
-        // Update actions based on player role during night
-        // This will be implemented based on specific game rules
+        // This is now handled in addActionButtons
     }
 
     private fun updateActionsForDay() {
-        // Update actions available during day phase
+        // This is now handled in addActionButtons
     }
 
     private fun updateActionsForVoting() {
-        // Update actions for voting phase
+        // This is now handled in addActionButtons
     }
 
     fun updateDisplay() {
-        // General display update logic
+        // Update current player from model
+        currentPlayer = gameController.model.getPlayerByName(playerName)
+
+        // Update the role based on the current player
+        currentPlayer?.role?.let { role ->
+            playerRole = role.name
+            updatePlayerUI(role.name, currentPlayer?.isAlive ?: true)
+        }
+
+        // Update phase
+        updatePhaseDisplay(currentPhase)
     }
 
     fun showRoleAssignment(role: String) {
