@@ -2,7 +2,9 @@ package com.badlogic.palermojustice.model
 
 abstract class Role(val name: String) {
     abstract val description: String
-    abstract fun performAction(players: List<Player>, target: Player)
+    open fun performAction(players: List<Player>, target: Player): String? {
+        return null
+    }
 }
 
 // Specific roles
@@ -10,33 +12,36 @@ abstract class Role(val name: String) {
 //Mafia
 class Mafioso : Role("Mafioso") {
     override val description = "Select a person to kill"
-    override fun performAction(players: List<Player>, target: Player) {
+    override fun performAction(players: List<Player>, target: Player): String? {
         if (target.isProtected) {
             println("${target.name} was protected!")
         } else {
             target.isAlive = false
             println("${target.name} was killed!")
         }
+        return null
     }
 }
 //Detective
 class Ispettore : Role("Ispettore") {
     override val description = "Select a person to inspect"
-    override fun performAction(players: List<Player>, target: Player) {
-        println("${target.name} is a ${target.role?.name}")
+    override fun performAction(players: List<Player>, target: Player): String {
+        return "${target.name} is a ${target.role?.name}"
     }
 }
 
 //Protector
 class Sgarrista : Role("Sgarrista") {
     override val description = "Select a person to protect"
-    override fun performAction(players: List<Player>, target: Player) {
+    override fun performAction(players: List<Player>, target: Player): String? {
         target.isProtected = true
+        println("${target.name} is now protected!")
+        return null
     }
 }
 
 //Villager
 class Paesano : Role("Paesano") {
     override val description = "No action required"
-    override fun performAction(players: List<Player>, target: Player) {}
+    override fun performAction(players: List<Player>, target: Player): String? { return null }
 }

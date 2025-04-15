@@ -36,6 +36,8 @@ class GameScreen(
     // Animation variables added from colleague's version
     private var elapsed = 0f
     private var dotCount = 0
+    private var lastDotCount = 0
+    private var dotTimer = 0f
     private var dotsStarted = false
     private var roleAnimationComplete = false
     private var showRoleAnimation = true
@@ -159,25 +161,24 @@ class GameScreen(
 
         // Role Animation UI based on colleague's code
         val titleLabel = Label("YOU ARE...", skin, "title")
+        titleLabel.setFontScale(3f)
         roleLabel = Label(playerRole, skin, "title")
-        val nameLabel = Label(playerName, skin, "default")
-        waitingLabel = Label("", skin, "default")
+        roleLabel.setFontScale(3f)
+        waitingLabel = Label("", skin, "big")
+        waitingLabel.setFontScale(1.5f)
 
         // Initial fade-in setup
         titleLabel.color.a = 0f
         roleLabel.color.a = 0f
-        nameLabel.color.a = 0f
         waitingLabel.color.a = 0f
 
         table.add(titleLabel).padBottom(20f).row()
         table.add(roleLabel).padBottom(40f).row()
-        table.add(nameLabel).padBottom(40f).row()
         table.add(waitingLabel).padTop(40f).row()
 
         // Fade in animations
         titleLabel.addAction(Actions.fadeIn(1f))
         roleLabel.addAction(Actions.sequence(Actions.delay(1f), Actions.fadeIn(1f)))
-        nameLabel.addAction(Actions.sequence(Actions.delay(2f), Actions.fadeIn(1f)))
         waitingLabel.addAction(Actions.sequence(Actions.delay(3f), Actions.fadeIn(1f)))
 
         // Also create the game UI, but hide it for now
@@ -302,26 +303,38 @@ class GameScreen(
 
         try {
             if (showRoleAnimation && !roleAnimationComplete) {
-                // Handle role animation logic
                 elapsed += delta
 
-                // Start showing dots only after 3.5 seconds
-                if (elapsed >= 3.5f) {
+                if (elapsed >= 1.5f) {
                     dotsStarted = true
                 }
 
-                if (dotsStarted && elapsed >= 3.5f + dotCount * 0.5f) {
-                    dotCount = (dotCount % 3) + 1
-                    waitingLabel.setText("Continuing" + ".".repeat(dotCount))
+                if (dotsStarted) {
+                    dotTimer += delta
+
+                    // Every 0.5 seconds, update the dots
+                    if (dotTimer >= 0.5f) {
+                        dotTimer = 0f
+                        dotCount = (dotCount % 3) + 1
+
+                        // Only update label if dotCount changed
+                        if (dotCount != lastDotCount) {
+                            waitingLabel.setText("Continuing" + ".".repeat(dotCount))
+                            lastDotCount = dotCount
+                        }
+                    }
                 }
 
-                // Trigger transition after ~7 seconds
-                if (elapsed >= 7f) {
+                // Trigger transition after ~6 seconds
+                if (elapsed >= 6f) {
                     roleAnimationComplete = true
+
+                    // Semplifichiamo questa parte usando direttamente mainTable
+                    // invece di cercare l'attore per nome
                     stage.addAction(Actions.sequence(
                         Actions.fadeOut(0.5f),
                         Actions.run {
-                            Main.instance.setScreen(RoleAssignmentScreen())
+                            Main.instance.setScreen(RoleActionScreen())
                         },
                         Actions.fadeIn(0.5f)
                     ))
