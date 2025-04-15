@@ -53,51 +53,58 @@ class MessageHandler {
                         return
                     }
 
-                    // Here we're just logging instead of trying to parse the GameState
-                    // Until full implementation is done
-                    println("GAME_STATE_UPDATE received with payload: $payloadJson")
-
-                    // Instead of trying to parse it to GameState directly, we'll just forward
-                    // the callback for now
+                    // Forward the raw payload to GameController
+                    try {
+                        @Suppress("UNCHECKED_CAST")
+                        val gameData = message.payload as? Map<String, Any>
+                        if (gameData != null) {
+                            gameController.updateGameState(gameData)
+                        }
+                    } catch (e: Exception) {
+                        println("Error processing game data: ${e.message}")
+                    }
                 } catch (e: Exception) {
                     println("Error in routeMessage (GAME_STATE_UPDATE): ${e.message}")
                     e.printStackTrace()
                 }
             }
+            MessageType.START_GAME -> {
+                // Handle start game message
+                println("START_GAME message received. Processing...")
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    val gameData = message.payload as? Map<String, Any>
+                    if (gameData != null) {
+                        // Update game controller with the received data
+                        gameController.updateGameState(gameData)
+                    }
+                } catch (e: Exception) {
+                    println("Error processing START_GAME message: ${e.message}")
+                }
+            }
             MessageType.JOIN_ROOM -> {
-                // Basic implementation to avoid TODO() exception
+                // Basic implementation to avoid exception
                 println("JOIN_ROOM message received. This is not fully implemented yet.")
-                // Actual implementation would handle player joining a room
             }
             MessageType.LEAVE_ROOM -> {
-                // Basic implementation to avoid TODO() exception
+                // Basic implementation to avoid exception
                 println("LEAVE_ROOM message received. This is not fully implemented yet.")
-                // Actual implementation would handle player leaving a room
-            }
-            MessageType.START_GAME -> {
-                // Basic implementation to avoid TODO() exception
-                println("START_GAME message received. This is not fully implemented yet.")
-                // Actual implementation would handle game start logic
             }
             MessageType.PLAYER_ACTION -> {
-                // Basic implementation to avoid TODO() exception
+                // Basic implementation to avoid exception
                 println("PLAYER_ACTION message received. This is not fully implemented yet.")
-                // Actual implementation would handle player actions during the game
             }
             MessageType.VOTE -> {
-                // Basic implementation to avoid TODO() exception
+                // Basic implementation to avoid exception
                 println("VOTE message received. This is not fully implemented yet.")
-                // Actual implementation would handle voting logic
             }
             MessageType.ROLE_ASSIGNMENT -> {
-                // Basic implementation to avoid TODO() exception
+                // Basic implementation to avoid exception
                 println("ROLE_ASSIGNMENT message received. This is not fully implemented yet.")
-                // Actual implementation would handle role assignment
             }
             MessageType.CHAT_MESSAGE -> {
-                // Basic implementation to avoid TODO() exception
+                // Basic implementation to avoid exception
                 println("CHAT_MESSAGE message received. This is not fully implemented yet.")
-                // Actual implementation would handle chat messages
             }
         }
 

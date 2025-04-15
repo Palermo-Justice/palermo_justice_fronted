@@ -6,7 +6,7 @@ import com.badlogic.palermojustice.view.LobbyScreen
 
 /**
  * Controller for the lobby screen.
- * Now uses GameModel via GameController as the single source of truth for players.
+ * Uses GameModel via GameController as the single source of truth for players.
  */
 class LobbyController(
     private val networkController: FirebaseInterface,
@@ -24,6 +24,36 @@ class LobbyController(
 
         // Add current player to the model
         gameController.model.addPlayerByName(playerName)
+
+        // Register callback for game state updates
+        messageHandler.registerCallback(MessageType.GAME_STATE_UPDATE) { message ->
+            try {
+                @Suppress("UNCHECKED_CAST")
+                val gameData = message.payload as? Map<String, Any>
+                if (gameData != null) {
+                    Gdx.app.postRunnable {
+                        val state = gameData["state"] as? String
+                        // Redirect to game screen if game is starting or running
+                        if (state == "RUNNING") {
+                            view?.navigateToGameScreen(roomId, playerName, isHost)
+                        } else {
+                            // Regular player list update
+                            updatePlayersFromGameData(gameData)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error processing game state update: ${e.message}")
+            }
+        }
+
+        // Also register for START_GAME messages specifically
+        messageHandler.registerCallback(MessageType.START_GAME) { message ->
+            Gdx.app.postRunnable {
+                // When START_GAME is received, navigate to game screen
+                view?.navigateToGameScreen(roomId, playerName, isHost)
+            }
+        }
 
         // Start listening for updates immediately
         setupPlayerUpdates()
@@ -48,7 +78,13 @@ class LobbyController(
         // Listen for game updates from Firebase
         networkController.listenForGameUpdates { gameData ->
             Gdx.app.postRunnable {
-                updatePlayersFromGameData(gameData)
+                // Check game state before updating player list
+                val state = gameData["state"] as? String
+                if (state == "RUNNING") {
+                    view?.navigateToGameScreen(roomId, playerName, isHost)
+                } else {
+                    updatePlayersFromGameData(gameData)
+                }
             }
         }
 
@@ -56,7 +92,13 @@ class LobbyController(
         networkController.getRoomInfo(roomId) { roomData ->
             if (roomData != null) {
                 Gdx.app.postRunnable {
-                    updatePlayersFromGameData(roomData)
+                    // Check initial game state
+                    val state = roomData["state"] as? String
+                    if (state == "RUNNING") {
+                        view?.navigateToGameScreen(roomId, playerName, isHost)
+                    } else {
+                        updatePlayersFromGameData(roomData)
+                    }
                 }
             }
         }
@@ -155,14 +197,24 @@ class LobbyController(
     fun startGame() {
         val players = gameController.model.getPlayers()
         if (isHost && players.size >= 3) { // Minimum 3 players to start
-            // Send start game message
-            val playerNames = gameController.model.getPlayerNames()
+            // Send two updates to ensure all clients receive notification
+
+            // First update the room state to RUNNING
+            val updateData = mapOf(
+                "state" to "RUNNING",
+                "currentPhase" to "STARTING"
+            )
+            networkController.sendMessage("GAME_STATE_UPDATE", updateData)
+
+            // Then send the START_GAME message with player list to trigger listeners
             val gameData = mapOf(
                 "state" to "RUNNING",
                 "currentPhase" to "STARTING",
-                "playerList" to playerNames // Store a simple list of player names for easy access
+                "playerList" to gameController.model.getPlayerNames()
             )
             networkController.sendMessage("START_GAME", gameData)
+
+            // Navigate host to game screen
             view?.navigateToGameScreen(roomId, playerName, isHost)
         } else if (players.size < 3) {
             view?.showMessage("Need at least 3 players to start")
