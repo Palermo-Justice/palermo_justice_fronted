@@ -69,7 +69,7 @@ class GameScreen(
 
         // Find or create the player in the model
         currentPlayer = gameController.model.getPlayerByName(playerName)
-
+        println("assigned role: ${currentPlayer?.role?.name}")
         if (currentPlayer == null) {
             // If player doesn't exist yet, add them
             currentPlayer = gameController.model.addPlayerByName(playerName)
@@ -248,7 +248,7 @@ class GameScreen(
                     val nightActionButton = TextButton("Perform Night Action", skin)
                     nightActionButton.addListener(object : ChangeListener() {
                         override fun changed(event: ChangeEvent, actor: Actor) {
-                            Main.instance.setScreen(RoleActionScreen())
+                            Main.instance.setScreen(RoleActionScreen(currentPlayer!!))
                         }
                     })
                     actionsTable.add(nightActionButton).width(200f).height(50f).padBottom(10f).row()
@@ -278,7 +278,7 @@ class GameScreen(
                     val voteButton = TextButton("Vote", skin)
                     voteButton.addListener(object : ChangeListener() {
                         override fun changed(event: ChangeEvent, actor: Actor) {
-                            Main.instance.setScreen(VotingScreen())
+                            Main.instance.setScreen(VotingScreen(currentPlayer!!))
                         }
                     })
                     actionsTable.add(voteButton).width(200f).height(50f).padBottom(10f).row()
@@ -334,7 +334,7 @@ class GameScreen(
                     stage.addAction(Actions.sequence(
                         Actions.fadeOut(0.5f),
                         Actions.run {
-                            Main.instance.setScreen(RoleActionScreen())
+                            Main.instance.setScreen(RoleActionScreen(currentPlayer!!))
                         },
                         Actions.fadeIn(0.5f)
                     ))

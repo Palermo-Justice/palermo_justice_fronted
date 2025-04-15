@@ -20,7 +20,7 @@ import com.badlogic.palermojustice.model.Player
  * Screen for role-specific night actions.
  * Uses GameController instead of direct access to GameStateHelper.
  */
-class RoleActionScreen : Screen {
+class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
     private val gameController = GameController.getInstance()
@@ -86,7 +86,6 @@ class RoleActionScreen : Screen {
         stage.addActor(mainTable)
 
         // Get current player with this role
-        val currentPlayer = findPlayerWithRole(currentRoleName)
         Gdx.app.log("RoleActionScreen", "Current player with role $currentRoleName: ${currentPlayer?.name}")
 
         // Instruction label
@@ -183,7 +182,6 @@ class RoleActionScreen : Screen {
         confirmCountLabel.setText("${confirmedPlayers.size} / ${players.size} players confirmed")
 
         // Process action for current role
-        val currentPlayer = findPlayerWithRole(currentRoleName)
         val targetPlayer = gameController.model.getPlayers()
             .find { it.id == selectedPlayerId }
 
@@ -210,12 +208,11 @@ class RoleActionScreen : Screen {
             .find { it.id == selectedPlayerId }
         Gdx.app.log("RoleActionScreen", "Process confirm: target player: ${targetPlayer?.name}")
 
-        // Check if we have both a current player and a selected player
-        // Prevent duplicate confirms
-        if (currentPlayer != null && !confirmedPlayers.contains(currentPlayer.id)) {
-            confirmedPlayers.add(currentPlayer.id)
-            Gdx.app.log("RoleActionScreen", "Added ${currentPlayer.name} to confirmed players")
-            confirmCountLabel.setText("${confirmedPlayers.size} / ${gameController.model.getPlayers().size} players confirmed")
+                // Check if we have both a current player and a selected player
+                // Prevent duplicate confirms
+                if (currentPlayer != null && !confirmedPlayers.contains(currentPlayer.id)) {
+                    confirmedPlayers.add(currentPlayer.id)
+                    confirmCountLabel.setText("${confirmedPlayers.size} / ${gameController.model.getPlayers().size} players confirmed")
 
             // Only perform action if player has this role
             if (targetPlayer != null && currentPlayer.role?.name == currentRoleName) {
@@ -260,7 +257,7 @@ class RoleActionScreen : Screen {
 
         if (GameStateHelper.currentRoleIndex < GameStateHelper.roleSequence.size) {
             Gdx.app.log("RoleActionScreen", "Moving to next role screen")
-            Main.instance.setScreen(RoleActionScreen())
+            Main.instance.setScreen(RoleActionScreen(currentPlayer))
         } else {
             // If we have an announcement text from a Mafioso action, use it
             val finalAnnouncementText = announcementText ?: "The night has passed."

@@ -158,6 +158,7 @@ class GameModel {
 
         for ((index, player) in players.withIndex()) {
             player.role = roleList[index]
+            println("${player.name} assigned role: ${player.role?.name}")
         }
     }
 
@@ -197,6 +198,8 @@ class GameModel {
                     // Find existing player or create new one
                     var player = getPlayerByName(name)
                     if (player == null) {
+
+
                         player = Player(
                             id = playerId.toString(),
                             name = name

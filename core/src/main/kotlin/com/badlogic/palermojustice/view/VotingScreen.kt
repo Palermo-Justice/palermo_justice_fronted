@@ -18,7 +18,7 @@ import com.badlogic.palermojustice.model.Player
  * Screen that allows players to vote to eliminate another player.
  * Uses GameController to access player data.
  */
-class VotingScreen : Screen {
+class VotingScreen(private val currentPlayer: Player) : Screen {
     private lateinit var stage: Stage
     private lateinit var skin: Skin
     private var votedPlayer: Player? = null
@@ -196,7 +196,7 @@ class VotingScreen : Screen {
         } else {
             // Game continues - go to night phase
             gameController.startNightPhase()
-            Main.instance.setScreen(SleepScreen())
+            Main.instance.setScreen(RoleActionScreen(currentPlayer))
         }
     }
 
