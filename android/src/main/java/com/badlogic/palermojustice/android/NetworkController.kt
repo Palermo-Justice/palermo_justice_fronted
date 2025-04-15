@@ -221,6 +221,34 @@ class NetworkController private constructor(private val context: Context) : Fire
         }
     }
 
+    /**
+     * Sets the 'isAlive' status of a player to false in the specified room.
+     *
+     * @param roomId The ID of the room containing the player.
+     * @param playerId The ID of the player whose 'isAlive' status needs to be updated.
+     * @param callback Callback indicating success or failure of the operation.
+     */
+    override fun setPlayerDead(roomId: String, playerId: String, callback: (Boolean) -> Unit) {
+        Log.d(TAG, "setPlayerDead: Setting player $playerId in room $roomId to dead")
+
+        try {
+            val playerRef = database.child("rooms").child(roomId).child("players").child(playerId).child("isAlive")
+
+            playerRef.setValue(false)
+                .addOnSuccessListener {
+                    Log.d(TAG, "setPlayerDead: Player $playerId set to dead successfully")
+                    callback(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "setPlayerDead: Failed to set player $playerId to dead", e)
+                    callback(false)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "setPlayerDead: Exception occurred while setting player dead", e)
+            callback(false)
+        }
+    }
+
     override fun sendMessage(messageType: String, data: Map<String, Any>) {
         Log.d(TAG, "sendMessage: Attempting to send message of type $messageType")
         try {
