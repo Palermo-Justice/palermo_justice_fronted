@@ -10,6 +10,8 @@ enum class GamePhase {
     NIGHT
 }
 
+// TODO: In the databse schema we also have to implement. The current round. Therefore we should extend the GamePhase
+
 enum class GameStatus {
     WAITING,
     RUNNING,
