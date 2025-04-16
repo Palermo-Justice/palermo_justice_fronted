@@ -101,7 +101,7 @@ class GameScreen(
         // Extract data relevant to the current player and game state
         val phase = gameData["currentPhase"] as? String ?: "Unknown"
         currentPhase = phase
-
+        Gdx.app.log("GameScreen", "Current phase: $phase")
         // Update player-specific data (like role)
         val playersMap = gameData["players"] as? Map<String, Any> ?: mapOf()
         playersMap.forEach { (playerId, playerData) ->
