@@ -139,7 +139,6 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         val confirmButton = TextButton("Confirm", skin)
         confirmButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                val currentPlayer = findPlayerWithRole(currentRoleName)
                 processConfirmAction(currentPlayer)
             }
         })
