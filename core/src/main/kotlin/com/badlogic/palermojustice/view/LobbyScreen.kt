@@ -34,7 +34,7 @@ class LobbyScreen(
     // Test mode settings
     private val useTestPlayers = true
     private var autoStartTimer = 0f
-    private val autoStartDelay = 3f // 3 seconds before auto starting the game
+    private val autoStartDelay = 5f // n seconds before auto starting the game
 
     // Controllers for logic
     private lateinit var controller: LobbyController
