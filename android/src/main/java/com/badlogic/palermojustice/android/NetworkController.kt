@@ -70,7 +70,8 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "settings" to roomSettings,
                 "createdAt" to ServerValue.TIMESTAMP,
                 "currentNightRoleIndex" to 0,
-                "confirmations" to mapOf<String, Any>()
+                "confirmations" to mapOf<String, Any>(),
+                "pizzaIsGood" to true
             )
             Log.d(TAG, "createRoom: Initial room state created")
 
