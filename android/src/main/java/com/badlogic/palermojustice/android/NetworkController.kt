@@ -466,6 +466,33 @@ class NetworkController private constructor(private val context: Context) : Fire
         Log.d(TAG, "disconnect: Disconnect complete")
     }
 
+    override fun listenForConfirmations(callback: (List<String>) -> Unit) {
+        val currentRoleIndex = roomReference?.child("currentNightRoleIndex")?.toString()
+        val confirmationsRef = roomReference?.child("confirmations")?.child(currentRoleIndex ?: "0")
+
+        confirmationsRef?.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                try {
+                    val confirmedPlayerIds = mutableListOf<String>()
+                    for (childSnapshot in snapshot.children) {
+                        val playerId = childSnapshot.key
+                        val isConfirmed = childSnapshot.getValue(Boolean::class.java) ?: false
+                        if (isConfirmed && playerId != null) {
+                            confirmedPlayerIds.add(playerId)
+                        }
+                    }
+                    callback(confirmedPlayerIds)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing confirmations", e)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Confirmations listener cancelled", error.toException())
+            }
+        })
+    }
+
     // Data class for Firebase messages
     data class FirebaseMessage(
         val type: String = "",

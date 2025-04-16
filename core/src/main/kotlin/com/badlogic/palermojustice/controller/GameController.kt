@@ -207,4 +207,25 @@ class GameController private constructor() {
             }
         }
     }
+
+    fun sendConfirmation(playerId: String, rolePhase: String) {
+        if (::networkController.isInitialized) {
+            val confirmData = mapOf(
+                "type" to "CONFIRMATION",
+                "playerId" to playerId,
+                "rolePhase" to rolePhase
+            )
+
+            networkController.sendMessage("CONFIRMATION", confirmData)
+        }
+    }
+
+    fun registerForConfirmationUpdates(callback: (List<String>) -> Unit) {
+        if (::networkController.isInitialized) {
+            networkController.listenForConfirmations { confirmations ->
+                // Passa i dati delle conferme al callback
+                callback(confirmations)
+            }
+        }
+    }
 }

@@ -7,5 +7,6 @@ interface FirebaseInterface {
     fun listenForGameUpdates(updateCallback: (Map<String, Any>) -> Unit)
     fun getRoomInfo(roomId: String, callback: (Map<String, Any>?) -> Unit)
     fun setPlayerDead(roomId: String, playerId: String, callback: (Boolean) -> Unit)
+    fun listenForConfirmations(callback: (List<String>) -> Unit)
     fun disconnect()
 }

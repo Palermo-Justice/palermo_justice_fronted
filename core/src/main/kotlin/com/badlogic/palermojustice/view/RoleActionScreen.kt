@@ -63,6 +63,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         }
 
         createUI()
+        listenForConfirmations()
 
         // In test mode, auto-select a target player for action
         if (useTestMode) {
@@ -207,11 +208,13 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
             .find { it.id == selectedPlayerId }
         Gdx.app.log("RoleActionScreen", "Process confirm: target player: ${targetPlayer?.name}")
 
-                // Check if we have both a current player and a selected player
-                // Prevent duplicate confirms
-                if (currentPlayer != null && !confirmedPlayers.contains(currentPlayer.id)) {
-                    confirmedPlayers.add(currentPlayer.id)
-                    confirmCountLabel.setText("${confirmedPlayers.size} / ${gameController.model.getPlayers().size} players confirmed")
+        // Check if we have both a current player and a selected player
+        // Prevent duplicate confirms
+        if (currentPlayer != null && !confirmedPlayers.contains(currentPlayer.id)) {
+            confirmedPlayers.add(currentPlayer.id)
+            confirmCountLabel.setText("${confirmedPlayers.size} / ${gameController.model.getPlayers().size} players confirmed")
+
+            sendConfirmationToFirebase(currentPlayer.id)
 
             // Only perform action if player has this role
             if (targetPlayer != null && currentPlayer.role?.name == currentRoleName) {
@@ -234,6 +237,29 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         } else {
             // Show error message
             showErrorDialog("You can only confirm once per night!")
+        }
+    }
+
+    private fun sendConfirmationToFirebase(playerId: String) {
+        val confirmData = mapOf(
+            "playerId" to playerId,
+            "rolePhase" to currentRoleName,
+            "confirmed" to true
+        )
+
+        gameController.performRoleAction("CONFIRMATION", playerId)
+    }
+
+    private fun listenForConfirmations() {
+        gameController.registerForConfirmationUpdates { confirmations ->
+            confirmedPlayers.clear()
+            confirmedPlayers.addAll(confirmations)
+
+            confirmCountLabel.setText("${confirmedPlayers.size} / ${gameController.model.getPlayers().size} players confirmed")
+
+            if (confirmedPlayers.size >= gameController.model.getPlayers().size) {
+                shouldAutoProceed = true
+            }
         }
     }
 
