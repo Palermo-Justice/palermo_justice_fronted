@@ -22,7 +22,7 @@ class FinalResultScreen : Screen {
     private val gameController = GameController.getInstance()
 
     // Test mode settings
-    private val useTestMode = true
+    private val useTestMode = false
     private var autoTransitionTimer = 0f
     private val autoTransitionDelay = 5f // 5 seconds before auto transition
 
