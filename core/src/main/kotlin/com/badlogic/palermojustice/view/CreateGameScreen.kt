@@ -46,7 +46,7 @@ class CreateGameScreen : Screen {
         gameNameLabel.setFontScale(5f)
         mainTable.add(gameNameLabel).left().padBottom(10f).row()
 
-        gameNameField = TextField("", skin, "custom")
+        gameNameField = TextField("RoomX", skin, "custom")
         mainTable.add(gameNameField).fillX().height(100f).padBottom(50f).row()
 
         // Select players number
@@ -56,7 +56,7 @@ class CreateGameScreen : Screen {
 
         playerCountSelectBox = SelectBox<String>(skin, "big")
         playerCountSelectBox.setItems("3", "4", "5", "6", "7")
-        playerCountSelectBox.selected = "5"
+        playerCountSelectBox.selected = "3"
         mainTable.add(playerCountSelectBox).width(200f).height(80f).padBottom(50f).row()
 
         // Player name field
@@ -64,7 +64,7 @@ class CreateGameScreen : Screen {
         playerNameLabel.setFontScale(5f)
         mainTable.add(playerNameLabel).left().padBottom(10f).row()
 
-        playerNameField = TextField("", skin, "custom")
+        playerNameField = TextField("player", skin, "custom")
         mainTable.add(playerNameField).fillX().height(100f).padBottom(50f).row()
 
         // Lower buttons

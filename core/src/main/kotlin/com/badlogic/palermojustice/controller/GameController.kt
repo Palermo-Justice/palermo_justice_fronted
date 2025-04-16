@@ -57,7 +57,8 @@ class GameController private constructor() {
                 "name" to player.name,
                 "role" to (player.role?.name ?: "Paesano"),
                 "isAlive" to player.isAlive,
-                "isProtected" to player.isProtected
+                "isProtected" to player.isProtected,
+                "confirmed" to false  // Initialize confirmed to false for all players
             )
         }
 
@@ -84,6 +85,22 @@ class GameController private constructor() {
         // Update model
         model.setPhase(GamePhase.NIGHT)
 
+        // Reset confirmed status for all players
+        val playersData = model.getPlayers().associate { player ->
+            player.confirmed = false // Reset local confirmed state
+            player.id to mapOf(
+                "confirmed" to false
+            )
+        }
+
+        // Update phase in Firebase
+        if (::networkController.isInitialized) {
+            networkController.sendMessage("GAME_STATE_UPDATE", mapOf(
+                "currentPhase" to "NIGHT",
+                "players" to playersData  // Reset player confirmed status
+            ))
+        }
+
         // Update view for night phase
         if (::view.isInitialized) {
             view.updatePhaseDisplay(GamePhase.NIGHT.toString())
@@ -99,6 +116,7 @@ class GameController private constructor() {
     private fun resetNightSequence() {
         // Can implement night sequence reset logic here
         // Or defer to a helper function
+        GameStateHelper.resetNightSequence()
     }
 
     /**
@@ -208,24 +226,44 @@ class GameController private constructor() {
         }
     }
 
+    /**
+     * Send confirmation that the player has completed their night action
+     * This is specialized to only send the confirmation and not trigger a full game state update
+     */
     fun sendConfirmation(playerId: String, rolePhase: String) {
         if (::networkController.isInitialized) {
-            val confirmData = mapOf(
-                "type" to "CONFIRMATION",
+            // Send only the targeted update
+            val confirmationData = mapOf(
                 "playerId" to playerId,
-                "rolePhase" to rolePhase
+                "rolePhase" to rolePhase,
+                "confirmed" to true
             )
 
-            networkController.sendMessage("CONFIRMATION", confirmData)
+            // Use a dedicated message type to avoid full game updates
+            networkController.sendMessage("CONFIRMATION", confirmationData)
+
+            Gdx.app.log("GameController", "Sent confirmation for player $playerId in phase $rolePhase")
         }
     }
 
-    fun registerForConfirmationUpdates(callback: (List<String>) -> Unit) {
+    /**
+     * Reset confirmation status for all players
+     */
+    fun resetConfirmations() {
+        val players = model.getPlayers()
+
+        // Reset locally
+        players.forEach { it.confirmed = false }
+
+        // Create reset data
+        val resetData = players.associate { player ->
+            player.id to mapOf("confirmed" to false)
+        }
+
         if (::networkController.isInitialized) {
-            networkController.listenForConfirmations { confirmations ->
-                // Passa i dati delle conferme al callback
-                callback(confirmations)
-            }
+            networkController.sendMessage("RESET_CONFIRMATIONS", mapOf(
+                "players" to resetData
+            ))
         }
     }
 }

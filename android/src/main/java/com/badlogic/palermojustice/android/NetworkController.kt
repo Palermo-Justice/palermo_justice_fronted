@@ -20,6 +20,7 @@ class NetworkController private constructor(private val context: Context) : Fire
     private var playerId: String? = null
     private var roomListener: ValueEventListener? = null
     private var messagesListener: ChildEventListener? = null
+    private var confirmationsListener: ValueEventListener? = null
 
     companion object {
         @JvmStatic
@@ -70,8 +71,7 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "settings" to roomSettings,
                 "createdAt" to ServerValue.TIMESTAMP,
                 "currentNightRoleIndex" to 0,
-                "confirmations" to mapOf<String, Any>(),
-                "pizzaIsGood" to true
+                "confirmations" to mapOf<String, Any>() // Add confirmations map
             )
             Log.d(TAG, "createRoom: Initial room state created")
 
@@ -151,7 +151,24 @@ class NetworkController private constructor(private val context: Context) : Fire
                         try {
                             @Suppress("UNCHECKED_CAST")
                             val roomData = snapshot.getValue() as? Map<String, Any>
-                            callback(roomData)
+                            // Ensure the room has a confirmations node
+                            if (roomData != null && !roomData.containsKey("confirmations")) {
+                                // Add confirmations node if missing
+                                val updatedData = roomData.toMutableMap()
+                                updatedData["confirmations"] = mapOf<String, Any>()
+                                callback(updatedData)
+
+                                // Update the room with confirmations node
+                                snapshot.ref.child("confirmations").setValue(mapOf<String, Any>())
+                                    .addOnSuccessListener {
+                                        Log.d(TAG, "getRoomInfo: Added confirmations node to room")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e(TAG, "getRoomInfo: Failed to add confirmations node", e)
+                                    }
+                            } else {
+                                callback(roomData)
+                            }
                         } catch (e: Exception) {
                             Log.e(TAG, "getRoomInfo: Error casting data", e)
                             callback(null)
@@ -197,8 +214,8 @@ class NetworkController private constructor(private val context: Context) : Fire
             val player = mapOf(
                 "name" to playerName,
                 "isAlive" to true,
-                //"role" to "MAFIOSO", // Default role, will be assigned by game logic
-                "joinedAt" to ServerValue.TIMESTAMP
+                "joinedAt" to ServerValue.TIMESTAMP,
+                "confirmed" to false // Make sure it's a boolean false, not a string
             )
             Log.d(TAG, "connectToRoom: Player object created")
 
@@ -206,6 +223,27 @@ class NetworkController private constructor(private val context: Context) : Fire
             playerReference?.setValue(player)
                 ?.addOnSuccessListener {
                     Log.d(TAG, "connectToRoom: Player added to room successfully")
+
+                    // Ensure confirmations node exists
+                    roomReference?.child("confirmations")?.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            if (!snapshot.exists()) {
+                                // Create confirmations node if it doesn't exist
+                                roomReference?.child("confirmations")?.setValue(mapOf<String, Any>())
+                                    ?.addOnSuccessListener {
+                                        Log.d(TAG, "connectToRoom: Created confirmations node")
+                                    }
+                                    ?.addOnFailureListener { e ->
+                                        Log.e(TAG, "connectToRoom: Failed to create confirmations node", e)
+                                    }
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e(TAG, "connectToRoom: Error checking confirmations node", error.toException())
+                        }
+                    })
+
                     // Start listening for room updates
                     startRoomListener(roomId)
                     // Start listening for messages
@@ -362,6 +400,28 @@ class NetworkController private constructor(private val context: Context) : Fire
                                     }
                             }
 
+                            // Handle confirmation messages specially
+                            if (message.type == "CONFIRMATION") {
+                                Log.d(TAG, "startMessagesListener.onChildAdded: Received CONFIRMATION message")
+
+                                // Extract data from the message
+                                @Suppress("UNCHECKED_CAST")
+                                val data = message.data as? Map<String, Any>
+                                val playerId = data?.get("playerId") as? String
+                                val rolePhase = data?.get("rolePhase") as? String
+                                val confirmed = data?.get("confirmed") as? Boolean ?: true
+
+                                if (playerId != null) {
+                                    // Update the player's confirmed status
+                                    roomReference?.child("players")?.child(playerId)?.child("confirmed")?.setValue(confirmed)
+
+                                    // Also update the confirmations node
+                                    roomReference?.child("confirmations")?.child(playerId)?.setValue(confirmed)
+
+                                    Log.d(TAG, "startMessagesListener.onChildAdded: Updated confirmation status for player $playerId")
+                                }
+                            }
+
                             // Continue with normal message handling
                             val gameMessage = GameMessage(
                                 type = MessageType.valueOf(message.type),
@@ -452,6 +512,11 @@ class NetworkController private constructor(private val context: Context) : Fire
             Log.d(TAG, "disconnect: Messages listener removed")
         }
 
+        if (confirmationsListener != null && roomReference != null) {
+            roomReference?.child("confirmations")?.removeEventListener(confirmationsListener!!)
+            Log.d(TAG, "disconnect: Confirmations listener removed")
+        }
+
         // Remove player from room
         playerReference?.let { ref ->
             ref.removeValue()
@@ -466,29 +531,50 @@ class NetworkController private constructor(private val context: Context) : Fire
         Log.d(TAG, "disconnect: Disconnect complete")
     }
 
-    override fun listenForConfirmations(callback: (List<String>) -> Unit) {
-        val currentRoleIndex = roomReference?.child("currentNightRoleIndex")?.toString()
-        val confirmationsRef = roomReference?.child("confirmations")?.child(currentRoleIndex ?: "0")
+    override fun updatePlayerAttribute(playerId: String, attribute: String, value: Any, callback: (Boolean) -> Unit) {
+        Log.d(TAG, "updatePlayerAttribute: Aggiornamento diretto di $attribute a $value per player $playerId")
 
-        confirmationsRef?.addValueEventListener(object : ValueEventListener {
+        if (roomReference == null) {
+            Log.e(TAG, "updatePlayerAttribute: Nessun riferimento alla stanza")
+            callback(false)
+            return
+        }
+
+        roomReference?.child("players")?.child(playerId)?.child(attribute)?.setValue(value)
+            ?.addOnSuccessListener {
+                Log.d(TAG, "updatePlayerAttribute: Aggiornamento riuscito")
+                callback(true)
+            }
+            ?.addOnFailureListener { e ->
+                Log.e(TAG, "updatePlayerAttribute: Errore nell'aggiornamento", e)
+                callback(false)
+            }
+    }
+
+    override fun listenForConfirmations(callback: (List<String>) -> Unit) {
+
+        roomReference?.child("players")?.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                try {
-                    val confirmedPlayerIds = mutableListOf<String>()
-                    for (childSnapshot in snapshot.children) {
-                        val playerId = childSnapshot.key
-                        val isConfirmed = childSnapshot.getValue(Boolean::class.java) ?: false
-                        if (isConfirmed && playerId != null) {
-                            confirmedPlayerIds.add(playerId)
-                        }
+                val confirmedPlayerIds = mutableListOf<String>()
+
+                for (playerSnapshot in snapshot.children) {
+                    val playerId = playerSnapshot.key ?: continue
+                    val playerData = playerSnapshot.getValue() as? Map<*, *> ?: continue
+
+                    val isAlive = playerData["isAlive"] as? Boolean ?: true
+                    val isConfirmed = playerData["confirmed"] as? Boolean ?: false
+
+                    if (isAlive && isConfirmed) {
+                        confirmedPlayerIds.add(playerId)
                     }
-                    callback(confirmedPlayerIds)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error parsing confirmations", e)
                 }
+
+                callback(confirmedPlayerIds)
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Confirmations listener cancelled", error.toException())
+                // Log error
+                callback(emptyList())
             }
         })
     }

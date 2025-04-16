@@ -9,4 +9,5 @@ interface FirebaseInterface {
     fun setPlayerDead(roomId: String, playerId: String, callback: (Boolean) -> Unit)
     fun listenForConfirmations(callback: (List<String>) -> Unit)
     fun disconnect()
+    fun updatePlayerAttribute(playerId: String, attribute: String, value: Any, callback: (Boolean) -> Unit = {})
 }
