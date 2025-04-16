@@ -68,7 +68,9 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "players" to mapOf<String, Any>(), // Empty players map initially
                 "currentPhase" to "LOBBY",
                 "settings" to roomSettings,
-                "createdAt" to ServerValue.TIMESTAMP
+                "createdAt" to ServerValue.TIMESTAMP,
+                "currentNightRoleIndex" to 0,
+                "confirmations" to mapOf<String, Any>()
             )
             Log.d(TAG, "createRoom: Initial room state created")
 
