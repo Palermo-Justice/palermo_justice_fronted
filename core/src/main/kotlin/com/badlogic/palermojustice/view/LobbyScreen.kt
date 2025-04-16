@@ -32,7 +32,7 @@ class LobbyScreen(
     private var pendingPlayersList: List<String>? = null
 
     // Test mode settings
-    private val useTestPlayers = false
+    private val useTestPlayers = true
     private var autoStartTimer = 0f
     private val autoStartDelay = 5f // n seconds before auto starting the game
 

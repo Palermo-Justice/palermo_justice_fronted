@@ -21,7 +21,7 @@ class VotingResultScreen(private val votedPlayer: Player? = null, private val cu
     private val gameController = GameController.getInstance()
 
     // Test mode settings
-    private val useTestMode = false
+    private val useTestMode = true
     private var autoTransitionTimer = 0f
     private val autoTransitionDelay = 4f // 4 seconds before auto transition
 

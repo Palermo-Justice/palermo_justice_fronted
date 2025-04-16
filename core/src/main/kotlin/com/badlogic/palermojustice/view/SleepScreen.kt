@@ -19,7 +19,7 @@ class SleepScreen(private val currentPlayer: Player) : Screen {
     private lateinit var skin: Skin
 
     // Test mode settings
-    private val useTestMode = false
+    private val useTestMode = true
     private var autoTransitionTimer = 0f
     private val autoTransitionDelay = 3f // 3 seconds before auto transition
 

@@ -35,7 +35,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private var currentRoleName: String = ""
 
     // Flag for using test mode (auto-confirm)
-    private val useTestMode = false
+    private val useTestMode = true
 
     // Timer for auto-confirm in test mode
     private var autoConfirmTimer = 0f
