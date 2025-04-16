@@ -137,16 +137,18 @@ class GameModel {
 
         // Always have at least one Mafioso
         roleList.add(Mafioso())
+        roleList.add(Ispettore())
+        roleList.add(Sgarrista())
 
         // Add an Ispettore if we have at least 4 players
-        if (players.size >= 4) {
-            roleList.add(Ispettore())
-        }
+//        if (players.size >= 4) {
+//            roleList.add(Ispettore())
+//        }
 
         // Add Sgarrista if we have at least 5 players
-        if (players.size >= 5) {
-            roleList.add(Sgarrista())
-        }
+//        if (players.size >= 5) {
+//            roleList.add(Sgarrista())
+//        }
 
         // Fill remaining slots with Paesani
         while (roleList.size < players.size) {
