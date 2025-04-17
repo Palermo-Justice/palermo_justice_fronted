@@ -25,7 +25,7 @@ class VotingScreen(private val currentPlayer: Player) : Screen {
     private val gameController = GameController.getInstance()
 
     // Test mode settings
-    private val useTestMode = true
+    private val useTestMode = false
     private var autoVoteTimer = 0f
     private val autoVoteDelay = 3f // 3 seconds before auto voting
     private var autoConfirmTimer = 0f
