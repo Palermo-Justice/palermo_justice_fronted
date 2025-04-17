@@ -16,10 +16,13 @@ import com.badlogic.palermojustice.model.GameStateHelper
 import com.badlogic.palermojustice.model.Ispettore
 import com.badlogic.palermojustice.model.Mafioso
 import com.badlogic.palermojustice.model.Player
+import com.badlogic.palermojustice.model.Sgarrista
+import com.badlogic.palermojustice.model.Paesano
 
 /**
  * Screen for role-specific night actions.
- * Uses GameController instead of direct access to GameStateHelper.
+ * Simplified version where each player sees only their role's action screen
+ * and all players act simultaneously in a single night phase.
  */
 class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private lateinit var stage: Stage
@@ -31,20 +34,6 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
 
     // Store the selected player ID
     private var selectedPlayerId: String? = null
-
-    // Current role being processed
-    private var currentRoleName: String = ""
-
-    // Flag for using test mode (auto-confirm)
-    private val useTestMode = false
-
-    // Timer for auto-confirm in test mode
-    private var autoConfirmTimer = 0f
-    private val autoConfirmDelay = 2f // 2 seconds delay
-
-    // Flag for direct progression
-    private var shouldAutoProceed = false
-    private var autoProgressCounter = 0f
 
     // Flag to track if the current player has already confirmed
     private var hasConfirmed = false
@@ -62,10 +51,24 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private var confirmationCheckTimer = 0f
     private val confirmationCheckInterval = 1f // Check every second
 
+    // Flag for direct progression
+    private var shouldAutoProceed = false
+    private var autoProgressCounter = 0f
+
+    // Flag for using test mode (auto-confirm)
+    private val useTestMode = false
+
+    // Timer for auto-confirm in test mode
+    private var autoConfirmTimer = 0f
+    private val autoConfirmDelay = 2f // 2 seconds delay
+
     // Static tracker for whether we're currently in the role action sequence
     companion object {
         // These static flags help prevent multiple listeners and transitions
         var activeInstance: RoleActionScreen? = null
+
+        // Store night actions results to be shown in announcement screen
+        var nightActionsResults = mutableListOf<String>()
     }
 
     override fun show() {
@@ -77,20 +80,10 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
 
         skin = Skin(Gdx.files.internal("pj2.json"))
 
-        // Get the current role from GameStateHelper
-        if (GameStateHelper.currentRoleIndex < GameStateHelper.roleSequence.size) {
-            currentRoleName = GameStateHelper.roleSequence[GameStateHelper.currentRoleIndex]
-            Gdx.app.log("RoleActionScreen", "Current role: $currentRoleName, index: ${GameStateHelper.currentRoleIndex}")
-        } else {
-            // Handle the case where we've processed all roles
-            Gdx.app.log("RoleActionScreen", "All roles processed, moving to announcement")
-            if (!isTransitioning) {
-                isTransitioning = true
-                Main.instance.setScreen(AnnouncementScreen("Night actions complete!", currentPlayer))
-            }
-            return
-        }
+        // Clear previous night actions results when starting a new night phase
+        nightActionsResults.clear()
 
+        // Create UI based on player's role
         createUI()
 
         // Notify MessageHandler that we're in role action phase
@@ -103,21 +96,24 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
 
         // In test mode, auto-select a target player for action
         if (useTestMode) {
-            val players = gameController.model.getPlayers()
-            if (players.isNotEmpty()) {
-                // Select the first player that isn't the current role player as the target
-                val currentRolePlayer = findPlayerWithRole(currentRoleName)
-                val targetPlayer = players.firstOrNull { it.id != currentRolePlayer?.id }
-
-                if (targetPlayer != null) {
-                    selectedPlayerId = targetPlayer.id
-                    Gdx.app.log("RoleActionScreen", "Auto-selected target player: ${targetPlayer.name} for role $currentRoleName")
-                }
-            }
+            autoSelectTargetForTestMode()
         }
 
         // Immediately check if all players have already confirmed
         checkIfAllPlayersConfirmed()
+    }
+
+    private fun autoSelectTargetForTestMode() {
+        val players = gameController.model.getPlayers()
+        if (players.isNotEmpty()) {
+            // Select the first player that isn't the current player as the target
+            val targetPlayer = players.firstOrNull { it.id != currentPlayer.id }
+
+            if (targetPlayer != null) {
+                selectedPlayerId = targetPlayer.id
+                Gdx.app.log("RoleActionScreen", "Auto-selected target player: ${targetPlayer.name} for player ${currentPlayer.name}")
+            }
+        }
     }
 
     /**
@@ -155,13 +151,45 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         mainTable.setFillParent(true)
         stage.addActor(mainTable)
 
-        // Get current player with this role
-        Gdx.app.log("RoleActionScreen", "Current player with role $currentRoleName: ${currentPlayer?.name}")
+        // Determine which role UI to show based on the current player's role
+        val playerRole = currentPlayer.role
 
-        // Instruction label
-        val instructionText = getRoleDescription(currentRoleName)
+        // Title and instruction based on the player's role
+        val titleText: String
+        val instructionText: String
+
+        if (playerRole != null) {
+            when (playerRole) {
+                is Mafioso -> {
+                    titleText = "Mafioso"
+                    instructionText = "Select a player to eliminate"
+                }
+                is Ispettore -> {
+                    titleText = "Ispettore"
+                    instructionText = "Select a player to investigate"
+                }
+                is Sgarrista -> {
+                    titleText = "Sgarrista"
+                    instructionText = "Select a player to protect"
+                }
+                is Paesano -> {
+                    titleText = "Night Phase"
+                    instructionText = "Select any player (for show)"
+                }
+                else -> {
+                    titleText = "Night Phase"
+                    instructionText = "Select any player (for show)"
+                }
+            }
+        } else {
+            // Fallback if role is null
+            titleText = "Night Phase"
+            instructionText = "Select any player (for show)"
+        }
+
+        // Create labels with the determined text
         val instructionLabel = Label(instructionText, skin, "big")
-        val titleLabel = Label(currentRoleName, skin, "title")
+        val titleLabel = Label(titleText, skin, "title")
 
         instructionLabel.setFontScale(2f)
         titleLabel.setFontScale(3f)
@@ -279,50 +307,6 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         }
     }
 
-    private fun forceAutoConfirmAll() {
-        Gdx.app.log("RoleActionScreen", "FORCE: Auto confirming all players")
-
-        // Force add all players to confirmed
-        val players = gameController.model.getLivingPlayers()
-        for (player in players) {
-            if (!confirmedPlayers.contains(player.id)) {
-                confirmedPlayers.add(player.id)
-                // Also update the confirmed flag in the database
-                setPlayerConfirmed(player.id, true)
-                Gdx.app.log("RoleActionScreen", "FORCE: Added player ${player.name} to confirmed")
-            }
-        }
-
-        // Update the UI
-        confirmCountLabel.setText("${confirmedPlayers.size} / ${players.size} players confirmed")
-
-        // Process action for current role if current player has the role
-        if (currentPlayer.role?.name == currentRoleName) {
-            val targetPlayer = gameController.model.getPlayers()
-                .find { it.id == selectedPlayerId }
-
-            if (targetPlayer != null) {
-                Gdx.app.log("RoleActionScreen", "FORCE: Processing action for ${currentPlayer.name} targeting ${targetPlayer.name}")
-                val result = GameStateHelper.processNightAction(currentPlayer, targetPlayer)
-
-                if (result != null) {
-                    if (currentPlayer.role is Mafioso) {
-                        announcementText = result
-                        Gdx.app.log("RoleActionScreen", "FORCE: Mafioso action result: $result")
-                    } else if (currentPlayer.role is Ispettore) {
-                        Gdx.app.log("RoleActionScreen", "FORCE: Ispettore action result: $result")
-                    }
-                }
-            }
-        }
-
-        // Check if all players have confirmed
-        if (confirmedPlayers.size >= players.size) {
-            // Set flag to auto proceed
-            shouldAutoProceed = true
-        }
-    }
-
     private fun processConfirmAction(currentPlayer: Player?) {
         if (currentPlayer == null) return
 
@@ -345,25 +329,24 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
             if (success) {
                 Gdx.app.log("RoleActionScreen", "Successfully updated confirmed for player ${currentPlayer.id}")
 
-                // Execute role action only if the player has this role
-                if (currentPlayer.role?.name == currentRoleName) {
-                    val targetPlayer = gameController.model.getPlayers()
-                        .find { it.id == selectedPlayerId }
+                // Process the appropriate action based on the player's role
+                val targetPlayer = gameController.model.getPlayers()
+                    .find { it.id == selectedPlayerId }
 
-                    if (targetPlayer != null) {
-                        val result = GameStateHelper.processNightAction(currentPlayer, targetPlayer)
-
-                        if (result != null && currentPlayer.role is Ispettore) {
-                            Gdx.app.log("RoleActionScreen", "Ispettore result: $result")
-                            Gdx.app.postRunnable {
-                                showInfoDialog(result) {}
-                            }
-                            return@updatePlayerAttribute
+                if (targetPlayer != null) {
+                    when (currentPlayer.role) {
+                        is Mafioso -> {
+                            processMafiosoAction(currentPlayer, targetPlayer)
                         }
-
-                        if (result != null && currentPlayer.role is Mafioso) {
-                            announcementText = result
-                            Gdx.app.log("RoleActionScreen", "Mafioso result: $result")
+                        is Ispettore -> {
+                            processIspettoreAction(currentPlayer, targetPlayer)
+                        }
+                        is Sgarrista -> {
+                            processSgarristaAction(currentPlayer, targetPlayer)
+                        }
+                        else -> {
+                            // For other roles (like Paesano) - they don't do anything special
+                            Gdx.app.log("RoleActionScreen", "No special action for role ${currentPlayer.role?.name}")
                         }
                     }
                 }
@@ -374,6 +357,84 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
 
         // Check if all players have confirmed now
         checkAllConfirmsAndProceed()
+    }
+
+    private fun processMafiosoAction(mafioso: Player, target: Player) {
+        if (!target.isAlive) return
+
+        // Process Mafioso's killing action
+        val result = GameStateHelper.processNightAction(mafioso, target)
+
+        // Add result to night actions results
+        if (result != null) {
+            nightActionsResults.add(result)
+        }
+
+        Gdx.app.log("RoleActionScreen", "Mafioso action result: $result")
+
+        // Only update isAlive status if the player wasn't protected
+        if (!target.isProtected) {
+            // Update target player's isAlive status to false in Firebase
+            Main.instance.firebaseInterface.updatePlayerAttribute(
+                target.id,
+                "isAlive",
+                false
+            ) { updateSuccess ->
+                if (updateSuccess) {
+                    Gdx.app.log("RoleActionScreen", "Successfully killed player ${target.name}")
+
+                    // Also update local model
+                    target.isAlive = false
+                } else {
+                    Gdx.app.log("RoleActionScreen", "Failed to kill player ${target.name}")
+                }
+            }
+        } else {
+            Gdx.app.log("RoleActionScreen", "Player ${target.name} was protected and not killed")
+            // Override the previous result with protection message
+            if (nightActionsResults.isNotEmpty()) {
+                nightActionsResults.removeLast()
+            }
+            nightActionsResults.add("${target.name} was protected!")
+        }
+    }
+
+    private fun processIspettoreAction(ispettore: Player, target: Player) {
+        // For Inspector role
+        val result = GameStateHelper.processNightAction(ispettore, target)
+        if (result != null) {
+            Gdx.app.log("RoleActionScreen", "Ispettore result: $result")
+
+            // Show dialog to the Ispettore player only
+            Gdx.app.postRunnable {
+                showInfoDialog(result) {}
+            }
+        }
+    }
+
+    private fun processSgarristaAction(sgarrista: Player, target: Player) {
+        // For Sgarrista (Protector) role
+        val result = GameStateHelper.processNightAction(sgarrista, target)
+
+        // Update the target player's isProtected status to true in Firebase
+        Main.instance.firebaseInterface.updatePlayerAttribute(
+            target.id,
+            "isProtected",
+            true
+        ) { updateSuccess ->
+            if (updateSuccess) {
+                Gdx.app.log("RoleActionScreen", "Successfully protected player ${target.name}")
+
+                // Also update local model
+                target.isProtected = true
+
+                if (result != null) {
+                    Gdx.app.log("RoleActionScreen", "Sgarrista action result: $result")
+                }
+            } else {
+                Gdx.app.log("RoleActionScreen", "Failed to protect player ${target.name}")
+            }
+        }
     }
 
     private fun setPlayerConfirmed(playerId: String, confirmed: Boolean) {
@@ -526,17 +587,19 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         if (isTransitioning) return
 
         isTransitioning = true
-        Gdx.app.log("RoleActionScreen", "Proceeding to next screen")
+        Gdx.app.log("RoleActionScreen", "Proceeding to announcement screen")
 
-        // Increment role index
-        GameStateHelper.currentRoleIndex++
-        Gdx.app.log("RoleActionScreen", "New role index: ${GameStateHelper.currentRoleIndex}")
+        // Reset confirmations and protections before moving to announcement
+        resetPlayerConfirmations {
+            resetProtections {
+                // Determine announcement text based on night actions
+                val finalAnnouncementText = if (nightActionsResults.isNotEmpty()) {
+                    // Join all results or take the most important one
+                    nightActionsResults.lastOrNull() ?: "The night has passed."
+                } else {
+                    "The night has passed."
+                }
 
-        // If the role sequence is finished, reset confirmations and go to final screen
-        if (GameStateHelper.currentRoleIndex >= GameStateHelper.roleSequence.size) {
-            resetPlayerConfirmations {
-                // If we have an announcement text from a Mafioso action, use it
-                val finalAnnouncementText = announcementText ?: "The night has passed."
                 Gdx.app.log("RoleActionScreen", "Moving to announcement screen with text: $finalAnnouncementText")
 
                 // Reset the role action processing flag
@@ -544,16 +607,11 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
                 messageHandler?.setProcessingRoleAction(false)
 
                 // Reset the active instance reference
-                if (activeInstance == this) {
-                    activeInstance = null
-                }
+                activeInstance = null
 
+                // Move to announcement screen
                 Main.instance.setScreen(AnnouncementScreen(finalAnnouncementText, currentPlayer))
             }
-        } else {
-            // If there are still roles to process, don't reset confirmations
-            Gdx.app.log("RoleActionScreen", "Moving to next role screen")
-            Main.instance.setScreen(RoleActionScreen(currentPlayer))
         }
     }
 
@@ -586,22 +644,81 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         }
     }
 
-    /**
-     * Find a player with the specified role
-     */
-    private fun findPlayerWithRole(roleName: String): Player? {
-        return gameController.model.getPlayers()
-            .filter { it.isAlive }
-            .find { it.role?.name == roleName }
+    private fun resetProtections(onComplete: () -> Unit) {
+        // Get all players
+        val players = gameController.model.getPlayers()
+        var completedUpdates = 0
+
+        if (players.isEmpty()) {
+            onComplete()
+            return
+        }
+
+        // Reset the isProtected status for each player
+        players.forEach { player ->
+            player.isProtected = false // Local reset
+
+            Main.instance.firebaseInterface.updatePlayerAttribute(
+                player.id,
+                "isProtected",
+                false
+            ) { success ->
+                Gdx.app.postRunnable {
+                    completedUpdates++
+                    if (completedUpdates >= players.size) {
+                        onComplete()
+                    }
+                }
+            }
+        }
     }
 
-    /**
-     * Get the description for a role
-     */
-    private fun getRoleDescription(roleName: String): String {
-        // Get the first player with this role to get the description
-        val player = findPlayerWithRole(roleName)
-        return player?.role?.description ?: "No action"
+    private fun forceAutoConfirmAll() {
+        Gdx.app.log("RoleActionScreen", "FORCE: Auto confirming all players")
+
+        // Force add all players to confirmed
+        val players = gameController.model.getLivingPlayers()
+        for (player in players) {
+            if (!confirmedPlayers.contains(player.id)) {
+                confirmedPlayers.add(player.id)
+                // Also update the confirmed flag in the database
+                setPlayerConfirmed(player.id, true)
+                Gdx.app.log("RoleActionScreen", "FORCE: Added player ${player.name} to confirmed")
+            }
+        }
+
+        // Update the UI
+        confirmCountLabel.setText("${confirmedPlayers.size} / ${players.size} players confirmed")
+
+        // Process action for current player's role
+        val targetPlayer = gameController.model.getPlayers()
+            .find { it.id == selectedPlayerId }
+
+        if (targetPlayer != null) {
+            Gdx.app.log("RoleActionScreen", "FORCE: Processing action for ${currentPlayer.name} targeting ${targetPlayer.name}")
+
+            // Process based on player's role
+            when (currentPlayer.role) {
+                is Mafioso -> {
+                    processMafiosoAction(currentPlayer, targetPlayer)
+                }
+                is Ispettore -> {
+                    processIspettoreAction(currentPlayer, targetPlayer)
+                }
+                is Sgarrista -> {
+                    processSgarristaAction(currentPlayer, targetPlayer)
+                }
+                else -> {
+                    Gdx.app.log("RoleActionScreen", "FORCE: No special action for role ${currentPlayer.role?.name}")
+                }
+            }
+        }
+
+        // Check if all players have confirmed
+        if (confirmedPlayers.size >= players.size) {
+            // Set flag to auto proceed
+            shouldAutoProceed = true
+        }
     }
 
     /**
@@ -672,8 +789,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     override fun resume() {}
 
     override fun hide() {
-        // Don't remove any references here because we might be just
-        // transitioning to another role screen
+        // Don't remove any references here
     }
 
     override fun dispose() {
@@ -681,12 +797,9 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         if (activeInstance == this) {
             activeInstance = null
 
-            // Reset the role action processing flag only if we're exiting
-            // and not moving to another role
-            if (GameStateHelper.currentRoleIndex >= GameStateHelper.roleSequence.size) {
-                val messageHandler = gameController.getMessageHandler()
-                messageHandler?.setProcessingRoleAction(false)
-            }
+            // Reset the role action processing flag
+            val messageHandler = gameController.getMessageHandler()
+            messageHandler?.setProcessingRoleAction(false)
         }
 
         stage.dispose()

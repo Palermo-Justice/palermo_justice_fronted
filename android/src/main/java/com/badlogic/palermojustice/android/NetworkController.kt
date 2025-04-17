@@ -221,7 +221,7 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "isAlive" to true,
                 "joinedAt" to ServerValue.TIMESTAMP,
                 "confirmed" to false, // Make sure it's a boolean false, not a string
-                "protected" to false // Make sure it's a boolean false, not a string
+                "isProtected" to false // Make sure it's a boolean false, not a string
             )
             Log.d(TAG, "connectToRoom: Player object created")
 
