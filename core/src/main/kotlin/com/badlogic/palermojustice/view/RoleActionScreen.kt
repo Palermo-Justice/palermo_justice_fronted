@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.palermojustice.Main
 import com.badlogic.palermojustice.controller.GameController
+import com.badlogic.palermojustice.controller.MessageType
 import com.badlogic.palermojustice.model.GameStateHelper
 import com.badlogic.palermojustice.model.Ispettore
 import com.badlogic.palermojustice.model.Mafioso
@@ -45,7 +46,32 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private var shouldAutoProceed = false
     private var autoProgressCounter = 0f
 
+    // Flag to track if the current player has already confirmed
+    private var hasConfirmed = false
+
+    // Flag to prevent processing multiple updates at once
+    private var isProcessingUpdate = false
+
+    // Flag to prevent screen transitions during Firebase updates
+    private var isTransitioning = false
+
+    // Flag to indicate that we're listening for confirmations
+    private var isListeningForConfirmations = false
+
+    // Timer to periodically check if all players have confirmed
+    private var confirmationCheckTimer = 0f
+    private val confirmationCheckInterval = 1f // Check every second
+
+    // Static tracker for whether we're currently in the role action sequence
+    companion object {
+        // These static flags help prevent multiple listeners and transitions
+        var activeInstance: RoleActionScreen? = null
+    }
+
     override fun show() {
+        // Set this as the active instance
+        activeInstance = this
+
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
 
@@ -58,11 +84,22 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         } else {
             // Handle the case where we've processed all roles
             Gdx.app.log("RoleActionScreen", "All roles processed, moving to announcement")
-            Main.instance.setScreen(AnnouncementScreen("Night actions complete!", currentPlayer))
+            if (!isTransitioning) {
+                isTransitioning = true
+                Main.instance.setScreen(AnnouncementScreen("Night actions complete!", currentPlayer))
+            }
             return
         }
 
         createUI()
+
+        // Notify MessageHandler that we're in role action phase
+        // to prevent unwanted game state updates
+        val messageHandler = gameController.getMessageHandler()
+        messageHandler?.setProcessingRoleAction(true)
+
+        // Register for confirmation updates
+        listenForConfirmations()
 
         // In test mode, auto-select a target player for action
         if (useTestMode) {
@@ -77,6 +114,39 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
                     Gdx.app.log("RoleActionScreen", "Auto-selected target player: ${targetPlayer.name} for role $currentRoleName")
                 }
             }
+        }
+
+        // Immediately check if all players have already confirmed
+        checkIfAllPlayersConfirmed()
+    }
+
+    /**
+     * Check if all players have confirmed and if so, start the transition
+     */
+    private fun checkIfAllPlayersConfirmed() {
+        val livingPlayers = gameController.model.getLivingPlayers()
+        var allConfirmed = true
+
+        // Update the list of confirmed players
+        confirmedPlayers.clear()
+
+        livingPlayers.forEach { player ->
+            if (player.confirmed) {
+                confirmedPlayers.add(player.id)
+            } else {
+                allConfirmed = false
+            }
+        }
+
+        // Update the counter text
+        if (::confirmCountLabel.isInitialized) {
+            confirmCountLabel.setText("${confirmedPlayers.size} / ${livingPlayers.size} players confirmed")
+        }
+
+        // If all have confirmed, proceed to the next screen
+        if (allConfirmed && livingPlayers.isNotEmpty()) {
+            Gdx.app.log("RoleActionScreen", "All players already confirmed, should proceed to next screen")
+            shouldAutoProceed = true
         }
     }
 
@@ -104,42 +174,66 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         playerGrid.defaults().pad(10f).width(150f).height(100f)
 
         // Get all players from the GameModel
-        val players = gameController.model.getPlayers()
-        Gdx.app.log("RoleActionScreen", "Total players: ${players.size}")
+        val players = gameController.model.getLivingPlayers() // Only living players
+        Gdx.app.log("RoleActionScreen", "Total living players: ${players.size}")
 
         // ButtonGroup to allow only one selected at a time
         val buttonGroup = ButtonGroup<TextButton>()
         buttonGroup.setMinCheckCount(0)
         buttonGroup.setMaxCheckCount(1)
 
-        players.forEachIndexed { index, player ->
-            val roleName = player.role?.name ?: "Unknown"
-            val buttonText = "${player.name}\n$roleName"
-            val playerButton = TextButton(buttonText, skin, "select_player")
+        // Check if the current player has already confirmed
+        val isPlayerAlreadyConfirmed = currentPlayer.confirmed
+        hasConfirmed = isPlayerAlreadyConfirmed
 
-            playerButton.addListener(object : ClickListener() {
-                override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                    selectedPlayerId = player.id
-                    Gdx.app.log("RoleActionScreen", "Selected player: ${player.name}")
-                }
-            })
+        // Update the list of confirmed players from the start
+        updateConfirmedPlayersFromModel()
 
-            buttonGroup.add(playerButton)
-            playerGrid.add(playerButton).width(250f).height(250f).pad(10f)
-            if ((index + 1) % 3 == 0) playerGrid.row()
+        // Add buttons to select target players
+        var rowCount = 0
+        players.forEach { player ->
+            // Don't show the current player in the selection grid
+            if (player.id != currentPlayer.id) {
+                val buttonText = player.name
+                val playerButton = TextButton(buttonText, skin, "select_player")
+
+                playerButton.addListener(object : ClickListener() {
+                    override fun clicked(event: InputEvent?, x: Float, y: Float) {
+                        selectedPlayerId = player.id
+                        Gdx.app.log("RoleActionScreen", "Selected player: ${player.name}")
+                    }
+                })
+
+                buttonGroup.add(playerButton)
+                playerGrid.add(playerButton).width(200f).height(120f).pad(10f)
+                rowCount++
+                if (rowCount % 3 == 0) playerGrid.row()
+            }
         }
 
         mainTable.add(playerGrid).padBottom(20f).row()
 
         // Confirm counter label
-        confirmCountLabel = Label("0 / ${players.size} players confirmed", skin, "big")
+        confirmCountLabel = Label("${confirmedPlayers.size} / ${players.size} players confirmed", skin, "big")
         confirmCountLabel.setFontScale(2f)
         mainTable.add(confirmCountLabel).padBottom(20f).row()
 
-        val confirmButton = TextButton("Confirm", skin)
+        val confirmButton = TextButton(if (hasConfirmed) "Confirmed" else "Confirm", skin)
+        confirmButton.isDisabled = hasConfirmed
+
         confirmButton.addListener(object : ClickListener() {
             override fun clicked(event: InputEvent?, x: Float, y: Float) {
-                processConfirmAction(currentPlayer)
+                if (!hasConfirmed) {
+                    // Update the interface immediately
+                    confirmButton.isDisabled = true
+                    confirmButton.setText("Confirmed")
+
+                    // Process the confirmation
+                    processConfirmAction(currentPlayer)
+                    hasConfirmed = true
+                } else {
+                    showErrorDialog("You have already confirmed!")
+                }
             }
         })
 
@@ -165,14 +259,36 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         }
     }
 
+    /**
+     * Update the list of confirmed players using the model
+     */
+    private fun updateConfirmedPlayersFromModel() {
+        confirmedPlayers.clear()
+
+        // Add all living players who have already confirmed
+        gameController.model.getLivingPlayers()
+            .filter { it.confirmed }
+            .forEach { player ->
+                confirmedPlayers.add(player.id)
+            }
+
+        // If all players have confirmed, set the flag to proceed
+        val livingPlayers = gameController.model.getLivingPlayers()
+        if (confirmedPlayers.size >= livingPlayers.size && livingPlayers.isNotEmpty()) {
+            shouldAutoProceed = true
+        }
+    }
+
     private fun forceAutoConfirmAll() {
         Gdx.app.log("RoleActionScreen", "FORCE: Auto confirming all players")
 
         // Force add all players to confirmed
-        val players = gameController.model.getPlayers()
+        val players = gameController.model.getLivingPlayers()
         for (player in players) {
             if (!confirmedPlayers.contains(player.id)) {
                 confirmedPlayers.add(player.id)
+                // Also update the confirmed flag in the database
+                setPlayerConfirmed(player.id, true)
                 Gdx.app.log("RoleActionScreen", "FORCE: Added player ${player.name} to confirmed")
             }
         }
@@ -180,67 +296,226 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         // Update the UI
         confirmCountLabel.setText("${confirmedPlayers.size} / ${players.size} players confirmed")
 
-        // Process action for current role
-        val targetPlayer = gameController.model.getPlayers()
-            .find { it.id == selectedPlayerId }
+        // Process action for current role if current player has the role
+        if (currentPlayer.role?.name == currentRoleName) {
+            val targetPlayer = gameController.model.getPlayers()
+                .find { it.id == selectedPlayerId }
 
-        if (currentPlayer != null && targetPlayer != null) {
-            Gdx.app.log("RoleActionScreen", "FORCE: Processing action for ${currentPlayer.name} targeting ${targetPlayer.name}")
-            val result = GameStateHelper.processNightAction(currentPlayer, targetPlayer)
+            if (targetPlayer != null) {
+                Gdx.app.log("RoleActionScreen", "FORCE: Processing action for ${currentPlayer.name} targeting ${targetPlayer.name}")
+                val result = GameStateHelper.processNightAction(currentPlayer, targetPlayer)
 
-            if (result != null) {
-                if (currentPlayer.role is Mafioso) {
-                    announcementText = result
-                    Gdx.app.log("RoleActionScreen", "FORCE: Mafioso action result: $result")
-                } else if (currentPlayer.role is Ispettore) {
-                    Gdx.app.log("RoleActionScreen", "FORCE: Ispettore action result: $result")
+                if (result != null) {
+                    if (currentPlayer.role is Mafioso) {
+                        announcementText = result
+                        Gdx.app.log("RoleActionScreen", "FORCE: Mafioso action result: $result")
+                    } else if (currentPlayer.role is Ispettore) {
+                        Gdx.app.log("RoleActionScreen", "FORCE: Ispettore action result: $result")
+                    }
                 }
             }
         }
 
-        // Set flag to auto proceed
-        shouldAutoProceed = true
+        // Check if all players have confirmed
+        if (confirmedPlayers.size >= players.size) {
+            // Set flag to auto proceed
+            shouldAutoProceed = true
+        }
     }
 
     private fun processConfirmAction(currentPlayer: Player?) {
-        val targetPlayer = gameController.model.getPlayers()
-            .find { it.id == selectedPlayerId }
-        Gdx.app.log("RoleActionScreen", "Process confirm: target player: ${targetPlayer?.name}")
+        if (currentPlayer == null) return
 
-                // Check if we have both a current player and a selected player
-                // Prevent duplicate confirms
-                if (currentPlayer != null && !confirmedPlayers.contains(currentPlayer.id)) {
-                    confirmedPlayers.add(currentPlayer.id)
-                    confirmCountLabel.setText("${confirmedPlayers.size} / ${gameController.model.getPlayers().size} players confirmed")
+        // Add the current player to the local list of confirmed players
+        confirmedPlayers.add(currentPlayer.id)
 
-            // Only perform action if player has this role
-            if (targetPlayer != null && currentPlayer.role?.name == currentRoleName) {
-                val result = GameStateHelper.processNightAction(currentPlayer, targetPlayer)
+        val livingPlayers = gameController.model.getLivingPlayers()
+        confirmCountLabel.setText("${confirmedPlayers.size} / ${livingPlayers.size} players confirmed")
 
-                if (result != null && currentPlayer.role is Ispettore) {
-                    Gdx.app.log("RoleActionScreen", "Ispettore result: $result")
-                    showInfoDialog(result) {}
-                    return
+        // Also update the local model
+        currentPlayer.confirmed = true
+
+        // Use updatePlayerAttribute directly to minimize updates
+        // and prevent multiple reloads
+        Main.instance.firebaseInterface.updatePlayerAttribute(
+            currentPlayer.id,
+            "confirmed",
+            true
+        ) { success ->
+            if (success) {
+                Gdx.app.log("RoleActionScreen", "Successfully updated confirmed for player ${currentPlayer.id}")
+
+                // Execute role action only if the player has this role
+                if (currentPlayer.role?.name == currentRoleName) {
+                    val targetPlayer = gameController.model.getPlayers()
+                        .find { it.id == selectedPlayerId }
+
+                    if (targetPlayer != null) {
+                        val result = GameStateHelper.processNightAction(currentPlayer, targetPlayer)
+
+                        if (result != null && currentPlayer.role is Ispettore) {
+                            Gdx.app.log("RoleActionScreen", "Ispettore result: $result")
+                            Gdx.app.postRunnable {
+                                showInfoDialog(result) {}
+                            }
+                            return@updatePlayerAttribute
+                        }
+
+                        if (result != null && currentPlayer.role is Mafioso) {
+                            announcementText = result
+                            Gdx.app.log("RoleActionScreen", "Mafioso result: $result")
+                        }
+                    }
                 }
-
-                if (result != null && currentPlayer.role is Mafioso) {
-                    announcementText = result
-                    Gdx.app.log("RoleActionScreen", "Mafioso result: $result")
-                    return
-                }
+            } else {
+                Gdx.app.log("RoleActionScreen", "Error updating confirmed for player ${currentPlayer.id}")
             }
+        }
 
-            checkAllConfirmsAndProceed()
-        } else {
-            // Show error message
-            showErrorDialog("You can only confirm once per night!")
+        // Check if all players have confirmed now
+        checkAllConfirmsAndProceed()
+    }
+
+    private fun setPlayerConfirmed(playerId: String, confirmed: Boolean) {
+        Main.instance.firebaseInterface.updatePlayerAttribute(
+            playerId,
+            "confirmed",
+            confirmed
+        ) { success ->
+            if (success) {
+                Gdx.app.log("RoleActionScreen", "Player $playerId confirmed status updated to $confirmed")
+            }
         }
     }
 
+    private fun listenForConfirmations() {
+        if (isListeningForConfirmations) {
+            Gdx.app.log("RoleActionScreen", "Already listening for confirmations, skipping")
+            return
+        }
+
+        isListeningForConfirmations = true
+        Gdx.app.log("RoleActionScreen", "Setting up confirmation listener")
+
+        // Register a specific callback for confirmations
+        val messageHandler = gameController.getMessageHandler()
+        messageHandler?.registerCallback(MessageType.CONFIRMATION) { message ->
+            if (isProcessingUpdate || activeInstance != this) return@registerCallback
+
+            isProcessingUpdate = true
+
+            Gdx.app.postRunnable {
+                try {
+                    // Extract confirmation data
+                    @Suppress("UNCHECKED_CAST")
+                    val confirmedData = message.payload as? Map<String, Any> ?: run {
+                        isProcessingUpdate = false
+                        return@postRunnable
+                    }
+
+                    // Update confirmed status of players in the model
+                    updatePlayerConfirmationsFromData(confirmedData)
+
+                    // Update UI
+                    val livingPlayers = gameController.model.getLivingPlayers()
+                    confirmCountLabel.setText("${confirmedPlayers.size} / ${livingPlayers.size} players confirmed")
+
+                    // Check if all have confirmed
+                    if (confirmedPlayers.size >= livingPlayers.size && livingPlayers.isNotEmpty()) {
+                        shouldAutoProceed = true
+                        Gdx.app.log("RoleActionScreen", "All players have confirmed, proceeding...")
+                    }
+                } catch (e: Exception) {
+                    Gdx.app.error("RoleActionScreen", "Error processing confirmation update", e)
+                } finally {
+                    isProcessingUpdate = false
+                }
+            }
+        }
+
+        // Also check for direct Firebase updates
+        Main.instance.firebaseInterface.listenForConfirmations { confirmedPlayerIds ->
+            if (activeInstance != this) return@listenForConfirmations
+
+            Gdx.app.postRunnable {
+                val livingPlayers = gameController.model.getLivingPlayers()
+
+                // Update the local list of confirmed players
+                confirmedPlayers.clear()
+                confirmedPlayers.addAll(confirmedPlayerIds)
+
+                // Also update the local model
+                gameController.model.getPlayers().forEach { player ->
+                    player.confirmed = confirmedPlayerIds.contains(player.id)
+                }
+
+                // Update UI
+                if (::confirmCountLabel.isInitialized) {
+                    confirmCountLabel.setText("${confirmedPlayers.size} / ${livingPlayers.size} players confirmed")
+                }
+
+                // Check if all have confirmed
+                if (confirmedPlayers.size >= livingPlayers.size && livingPlayers.isNotEmpty()) {
+                    shouldAutoProceed = true
+                    Gdx.app.log("RoleActionScreen", "All players confirmed, proceeding to next screen")
+                }
+            }
+        }
+    }
+
+    /**
+     * Update the confirmed status of players based on received data
+     */
+    private fun updatePlayerConfirmationsFromData(data: Map<String, Any>) {
+        // If there is a players node, extract from there
+        if (data.containsKey("players")) {
+            @Suppress("UNCHECKED_CAST")
+            val playersMap = data["players"] as? Map<String, Any> ?: return
+
+            confirmedPlayers.clear()
+
+            for ((playerId, playerData) in playersMap) {
+                if (playerData is Map<*, *>) {
+                    val isConfirmed = playerData["confirmed"] as? Boolean ?: false
+                    val isAlive = playerData["isAlive"] as? Boolean ?: true
+
+                    if (isAlive && isConfirmed) {
+                        confirmedPlayers.add(playerId)
+
+                        // Also update the model
+                        gameController.model.getPlayers()
+                            .find { it.id == playerId }
+                            ?.confirmed = isConfirmed
+                    }
+                }
+            }
+        }
+
+        // If there is a confirmations node, use that
+        if (data.containsKey("confirmations")) {
+            @Suppress("UNCHECKED_CAST")
+            val confirmationsMap = data["confirmations"] as? Map<String, Boolean> ?: return
+
+            for ((playerId, isConfirmed) in confirmationsMap) {
+                if (isConfirmed) {
+                    confirmedPlayers.add(playerId)
+
+                    // Also update the model
+                    gameController.model.getPlayers()
+                        .find { it.id == playerId }
+                        ?.confirmed = true
+                }
+            }
+        }
+
+        // Check if all have confirmed
+        checkIfAllPlayersConfirmed()
+    }
+
     private fun checkAllConfirmsAndProceed() {
-        val players = gameController.model.getPlayers()
-        val allConfirmed = confirmedPlayers.size >= players.size
-        Gdx.app.log("RoleActionScreen", "Check all confirms: ${confirmedPlayers.size}/${players.size} confirmed, all confirmed? $allConfirmed")
+        val livingPlayers = gameController.model.getLivingPlayers()
+        val allConfirmed = confirmedPlayers.size >= livingPlayers.size
+        Gdx.app.log("RoleActionScreen", "Check all confirms: ${confirmedPlayers.size}/${livingPlayers.size} confirmed, all confirmed? $allConfirmed")
 
         if (allConfirmed) {
             shouldAutoProceed = true
@@ -248,20 +523,66 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     }
 
     private fun proceedToNextScreen() {
+        if (isTransitioning) return
+
+        isTransitioning = true
         Gdx.app.log("RoleActionScreen", "Proceeding to next screen")
 
         // Increment role index
         GameStateHelper.currentRoleIndex++
         Gdx.app.log("RoleActionScreen", "New role index: ${GameStateHelper.currentRoleIndex}")
 
-        if (GameStateHelper.currentRoleIndex < GameStateHelper.roleSequence.size) {
+        // If the role sequence is finished, reset confirmations and go to final screen
+        if (GameStateHelper.currentRoleIndex >= GameStateHelper.roleSequence.size) {
+            resetPlayerConfirmations {
+                // If we have an announcement text from a Mafioso action, use it
+                val finalAnnouncementText = announcementText ?: "The night has passed."
+                Gdx.app.log("RoleActionScreen", "Moving to announcement screen with text: $finalAnnouncementText")
+
+                // Reset the role action processing flag
+                val messageHandler = gameController.getMessageHandler()
+                messageHandler?.setProcessingRoleAction(false)
+
+                // Reset the active instance reference
+                if (activeInstance == this) {
+                    activeInstance = null
+                }
+
+                Main.instance.setScreen(AnnouncementScreen(finalAnnouncementText, currentPlayer))
+            }
+        } else {
+            // If there are still roles to process, don't reset confirmations
             Gdx.app.log("RoleActionScreen", "Moving to next role screen")
             Main.instance.setScreen(RoleActionScreen(currentPlayer))
-        } else {
-            // If we have an announcement text from a Mafioso action, use it
-            val finalAnnouncementText = announcementText ?: "The night has passed."
-            Gdx.app.log("RoleActionScreen", "Moving to announcement screen with text: $finalAnnouncementText")
-            Main.instance.setScreen(AnnouncementScreen(finalAnnouncementText, currentPlayer))
+        }
+    }
+
+    private fun resetPlayerConfirmations(onComplete: () -> Unit) {
+        // Get all players
+        val players = gameController.model.getPlayers()
+        var completedUpdates = 0
+
+        if (players.isEmpty()) {
+            onComplete()
+            return
+        }
+
+        // Reset the confirmed status for each player
+        players.forEach { player ->
+            player.confirmed = false // Local reset
+
+            Main.instance.firebaseInterface.updatePlayerAttribute(
+                player.id,
+                "confirmed",
+                false
+            ) { success ->
+                Gdx.app.postRunnable {
+                    completedUpdates++
+                    if (completedUpdates >= players.size) {
+                        onComplete()
+                    }
+                }
+            }
         }
     }
 
@@ -313,6 +634,13 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         Gdx.gl.glClearColor(0.9f, 0.9f, 0.9f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
+        // Periodically check if all players have confirmed
+        confirmationCheckTimer += delta
+        if (confirmationCheckTimer >= confirmationCheckInterval) {
+            confirmationCheckTimer = 0f
+            checkIfAllPlayersConfirmed()
+        }
+
         // Handle auto-confirm in test mode
         if (useTestMode && !shouldAutoProceed) {
             autoConfirmTimer += delta
@@ -342,9 +670,25 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
 
     override fun pause() {}
     override fun resume() {}
-    override fun hide() {}
+
+    override fun hide() {
+        // Don't remove any references here because we might be just
+        // transitioning to another role screen
+    }
 
     override fun dispose() {
+        // Remove the reference to the active instance only if this is the active instance
+        if (activeInstance == this) {
+            activeInstance = null
+
+            // Reset the role action processing flag only if we're exiting
+            // and not moving to another role
+            if (GameStateHelper.currentRoleIndex >= GameStateHelper.roleSequence.size) {
+                val messageHandler = gameController.getMessageHandler()
+                messageHandler?.setProcessingRoleAction(false)
+            }
+        }
+
         stage.dispose()
         skin.dispose()
     }

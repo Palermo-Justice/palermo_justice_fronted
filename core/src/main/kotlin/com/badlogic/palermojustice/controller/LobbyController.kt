@@ -18,6 +18,9 @@ class LobbyController(
     private var view: LobbyScreen? = null
     private val gameController = GameController.getInstance()
 
+    // Flag per prevenire navigazioni multiple alla GameScreen
+    private var hasNavigatedToGameScreen = false
+
     init {
         // Initialize game state with this room's info
         gameController.model.roomId = roomId
@@ -32,12 +35,20 @@ class LobbyController(
                 val gameData = message.payload as? Map<String, Any>
                 if (gameData != null) {
                     Gdx.app.postRunnable {
+                        // Verifica lo stato della room prima di aggiornare i giocatori
                         val state = gameData["state"] as? String
+
+                        // Verifica se stiamo nella fase di azione della notte e se ci sono aggiornamenti di conferma
+                        val currentPhase = gameData["currentPhase"] as? String
+                        val isNightActionPhase = currentPhase == "NIGHT" || currentPhase == "NIGHT_ACTION"
+
                         // Redirect to game screen if game is starting or running
-                        if (state == "RUNNING") {
+                        if (state == "RUNNING" && !hasNavigatedToGameScreen) {
+                            Gdx.app.log("LobbyController", "Game is running, navigating to game screen")
+                            hasNavigatedToGameScreen = true
                             view?.navigateToGameScreen(roomId, playerName, isHost)
-                        } else {
-                            // Regular player list update
+                        } else if (state != "RUNNING") {
+                            // Regular player list update - solo se non siamo in uno stato 'RUNNING'
                             updatePlayersFromGameData(gameData)
                         }
                     }
@@ -50,8 +61,13 @@ class LobbyController(
         // Also register for START_GAME messages specifically
         messageHandler.registerCallback(MessageType.START_GAME) { message ->
             Gdx.app.postRunnable {
-                // When START_GAME is received, navigate to game screen
-                view?.navigateToGameScreen(roomId, playerName, isHost)
+                // Naviga solo se non abbiamo già navigato
+                if (!hasNavigatedToGameScreen) {
+                    Gdx.app.log("LobbyController", "START_GAME received, navigating to game screen")
+                    hasNavigatedToGameScreen = true
+                    // When START_GAME is received, navigate to game screen
+                    view?.navigateToGameScreen(roomId, playerName, isHost)
+                }
             }
         }
 
@@ -80,9 +96,14 @@ class LobbyController(
             Gdx.app.postRunnable {
                 // Check game state before updating player list
                 val state = gameData["state"] as? String
-                if (state == "RUNNING") {
+
+                // Naviga solo se il gioco è in esecuzione e non abbiamo già navigato
+                if (state == "RUNNING" && !hasNavigatedToGameScreen) {
+                    Gdx.app.log("LobbyController", "Game is running from listener, navigating to game screen")
+                    hasNavigatedToGameScreen = true
                     view?.navigateToGameScreen(roomId, playerName, isHost)
-                } else {
+                } else if (state != "RUNNING") {
+                    // Aggiorna la lista giocatori solo se non siamo in stato RUNNING
                     updatePlayersFromGameData(gameData)
                 }
             }
@@ -94,9 +115,14 @@ class LobbyController(
                 Gdx.app.postRunnable {
                     // Check initial game state
                     val state = roomData["state"] as? String
-                    if (state == "RUNNING") {
+
+                    // Naviga solo se il gioco è in esecuzione e non abbiamo già navigato
+                    if (state == "RUNNING" && !hasNavigatedToGameScreen) {
+                        Gdx.app.log("LobbyController", "Game is running from initial room info, navigating to game screen")
+                        hasNavigatedToGameScreen = true
                         view?.navigateToGameScreen(roomId, playerName, isHost)
-                    } else {
+                    } else if (state != "RUNNING") {
+                        // Aggiorna la lista giocatori solo se non siamo in stato RUNNING
                         updatePlayersFromGameData(roomData)
                     }
                 }
@@ -197,6 +223,9 @@ class LobbyController(
     fun startGame() {
         val players = gameController.model.getPlayers()
         if (isHost && players.size >= 3) { // Minimum 3 players to start
+            // Imposta il flag prima di inviare messaggi per prevenire ricaricamenti multipli
+            hasNavigatedToGameScreen = true
+
             // Assign roles to players
             gameController.model.assignRoles()
 
@@ -206,7 +235,8 @@ class LobbyController(
                     "name" to player.name,
                     "role" to (player.role?.name ?: "Paesano"),
                     "isAlive" to player.isAlive,
-                    "isProtected" to player.isProtected
+                    "isProtected" to player.isProtected,
+                    "confirmed" to false
                 )
             }
 
@@ -262,5 +292,12 @@ class LobbyController(
      */
     fun copyRoomCode(): String {
         return roomId
+    }
+
+    /**
+     * Reset navigation state (da usare se necessario)
+     */
+    fun resetNavigationState() {
+        hasNavigatedToGameScreen = false
     }
 }
