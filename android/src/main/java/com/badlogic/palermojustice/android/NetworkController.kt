@@ -215,7 +215,8 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "name" to playerName,
                 "isAlive" to true,
                 "joinedAt" to ServerValue.TIMESTAMP,
-                "confirmed" to false // Make sure it's a boolean false, not a string
+                "confirmed" to false, // Make sure it's a boolean false, not a string
+                "protected" to false // Make sure it's a boolean false, not a string
             )
             Log.d(TAG, "connectToRoom: Player object created")
 
@@ -286,6 +287,35 @@ class NetworkController private constructor(private val context: Context) : Fire
                 }
         } catch (e: Exception) {
             Log.e(TAG, "setPlayerDead: Exception occurred while setting player dead", e)
+            callback(false)
+        }
+    }
+
+    /**
+     * Sets the 'protected' status of a player in the specified room.
+     *
+     * @param roomId The ID of the room containing the player.
+     * @param playerId The ID of the player whose 'protected' status needs to be updated.
+     * @param isProtected The boolean value to set for the 'protected' status (true or false).
+     * @param callback Callback indicating success or failure of the operation.
+     */
+    override fun setPlayerProtected(roomId: String, playerId: String, isProtected: Boolean, callback: (Boolean) -> Unit) {
+        Log.d(TAG, "setPlayerProtected: Setting player $playerId in room $roomId to protected = $isProtected")
+
+        try {
+            val playerRef = database.child("rooms").child(roomId).child("players").child(playerId).child("protected")
+
+            playerRef.setValue(isProtected)
+                .addOnSuccessListener {
+                    Log.d(TAG, "setPlayerProtected: Player $playerId set to protected = $isProtected successfully")
+                    callback(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "setPlayerProtected: Failed to set player $playerId to protected = $isProtected", e)
+                    callback(false)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "setPlayerProtected: Exception occurred while setting player protected", e)
             callback(false)
         }
     }

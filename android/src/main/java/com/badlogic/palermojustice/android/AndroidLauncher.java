@@ -66,6 +66,11 @@ public class AndroidLauncher extends AndroidApplication {
         }
 
         Log.d(TAG, "onCreate: Application startup complete");
+        networkController.setPlayerProtected("NOCSYC", "-OO26lULTH8PWsTtTcbx", false, aBoolean -> {
+            return null;
+        });
+
+
     }
 
     @Override
