@@ -19,7 +19,7 @@ class AnnouncementScreen(private val resultText: String, private val currentPlay
     private lateinit var skin: Skin
 
     // Test mode settings
-    private val useTestMode = true
+    private val useTestMode = false
     private var autoTransitionTimer = 0f
     private val autoTransitionDelay = 5f // 5 seconds before auto transition
     private val gameController = GameController.getInstance()

@@ -36,7 +36,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private var currentRoleName: String = ""
 
     // Flag for using test mode (auto-confirm)
-    private val useTestMode = true
+    private val useTestMode = false
 
     // Timer for auto-confirm in test mode
     private var autoConfirmTimer = 0f
@@ -205,7 +205,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
                 })
 
                 buttonGroup.add(playerButton)
-                playerGrid.add(playerButton).width(200f).height(120f).pad(10f)
+                playerGrid.add(playerButton).width(200f).height(200f).pad(10f)
                 rowCount++
                 if (rowCount % 3 == 0) playerGrid.row()
             }
