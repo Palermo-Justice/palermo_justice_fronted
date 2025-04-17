@@ -42,6 +42,15 @@ class GameScreen(
     private var roleAnimationComplete = false
     private var showRoleAnimation = true
 
+    // Flag per prevenire aggiornamenti multipli durante le conferme
+    private var isProcessingUpdate = false
+
+    // Flag per prevenire aggiornamenti durante le fasi di azione notturna
+    private var isInNightActionPhase = false
+
+    // Timestamp dell'ultimo aggiornamento per prevenire aggiornamenti troppo frequenti
+    private var lastUpdateTime = 0L
+
     override fun show() {
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
@@ -88,10 +97,76 @@ class GameScreen(
     private fun setupGameUpdates() {
         // Listen for game updates from Firebase
         Main.instance.firebaseInterface.listenForGameUpdates { gameData ->
+            // Previeni aggiornamenti troppo frequenti (throttling)
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastUpdateTime < 500) { // 500ms di throttling
+                return@listenForGameUpdates
+            }
+            lastUpdateTime = currentTime
+
+            // Controlla se questo aggiornamento riguarda solo le conferme in fase notturna
+            if (isConfirmationUpdateDuringNightPhase(gameData)) {
+                Gdx.app.log("GameScreen", "Ignoring confirmation update during night phase")
+                return@listenForGameUpdates
+            }
+
+            // Controlla se siamo in una fase notturna
+            val phase = gameData["currentPhase"] as? String ?: ""
+            isInNightActionPhase = phase == "NIGHT" || phase == "NIGHT_ACTION"
+
+            // Evita elaborazioni multiple dello stesso aggiornamento
+            if (isProcessingUpdate) {
+                return@listenForGameUpdates
+            }
+
+            isProcessingUpdate = true
+
             Gdx.app.postRunnable {
-                handleGameUpdate(gameData)
+                try {
+                    handleGameUpdate(gameData)
+                } finally {
+                    isProcessingUpdate = false
+                }
             }
         }
+    }
+
+    /**
+     * Verifica se questo aggiornamento riguarda solo le conferme durante la fase notturna
+     */
+    private fun isConfirmationUpdateDuringNightPhase(gameData: Map<String, Any>): Boolean {
+        // Se non siamo in fase notturna, non è un aggiornamento di conferma notturna
+        val phase = gameData["currentPhase"] as? String ?: ""
+        if (phase != "NIGHT" && phase != "NIGHT_ACTION") {
+            return false
+        }
+
+        // Controlla se c'è un aggiornamento dei giocatori che include solo "confirmed"
+        val playersMap = gameData["players"] as? Map<String, Any> ?: return false
+
+        // Se l'aggiornamento contiene solo "confirmed" e nessun altro cambiamento rilevante,
+        // consideriamolo un aggiornamento di conferma
+        var containsOnlyConfirmedChanges = true
+        var containsAnyConfirmedChange = false
+
+        for ((_, playerData) in playersMap) {
+            if (playerData is Map<*, *>) {
+                // Se contiene "confirmed"
+                val confirmed = playerData["confirmed"] as? Boolean
+                if (confirmed != null) {
+                    containsAnyConfirmedChange = true
+                }
+
+                // Se contiene altri cambiamenti rilevanti oltre a "confirmed"
+                if (playerData.containsKey("isAlive") ||
+                    playerData.containsKey("role") ||
+                    playerData.containsKey("isProtected")) {
+                    containsOnlyConfirmedChanges = false
+                }
+            }
+        }
+
+        return containsAnyConfirmedChange && containsOnlyConfirmedChanges
     }
 
     private fun handleGameUpdate(gameData: Map<String, Any>) {
@@ -102,6 +177,7 @@ class GameScreen(
         val phase = gameData["currentPhase"] as? String ?: "Unknown"
         currentPhase = phase
         Gdx.app.log("GameScreen", "Current phase: $phase")
+
         // Update player-specific data (like role)
         val playersMap = gameData["players"] as? Map<String, Any> ?: mapOf()
         playersMap.forEach { (playerId, playerData) ->
@@ -248,6 +324,8 @@ class GameScreen(
                     val nightActionButton = TextButton("Perform Night Action", skin)
                     nightActionButton.addListener(object : ChangeListener() {
                         override fun changed(event: ChangeEvent, actor: Actor) {
+                            // Impostiamo il flag per indicare che siamo in fase di azione notturna
+                            isInNightActionPhase = true
                             Main.instance.setScreen(RoleActionScreen(currentPlayer!!))
                         }
                     })
@@ -329,6 +407,9 @@ class GameScreen(
                 if (elapsed >= 6f) {
                     roleAnimationComplete = true
 
+                    // Impostiamo il flag per indicare che siamo in fase di azione notturna
+                    isInNightActionPhase = true
+
                     // Semplifichiamo questa parte usando direttamente mainTable
                     // invece di cercare l'attore per nome
                     stage.addAction(Actions.sequence(
@@ -375,19 +456,12 @@ class GameScreen(
         createGameUI(mainTable)
     }
 
-    private fun updateActionsForNight() {
-        // This is now handled in addActionButtons
-    }
-
-    private fun updateActionsForDay() {
-        // This is now handled in addActionButtons
-    }
-
-    private fun updateActionsForVoting() {
-        // This is now handled in addActionButtons
-    }
-
     fun updateDisplay() {
+        // Se siamo in fase di azione notturna, non fare aggiornamenti completi dell'UI
+        if (isInNightActionPhase) {
+            return
+        }
+
         // Update current player from model
         currentPlayer = gameController.model.getPlayerByName(playerName)
 

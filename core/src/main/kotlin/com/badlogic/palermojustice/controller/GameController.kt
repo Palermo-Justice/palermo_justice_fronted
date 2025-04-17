@@ -11,6 +11,7 @@ import com.badlogic.palermojustice.firebase.FirebaseInterface
  */
 class GameController private constructor() {
     val model: GameModel = GameModel()
+    private var messageHandler: MessageHandler? = null
     lateinit var view: GameScreen
     private lateinit var networkController: FirebaseInterface
 
@@ -35,6 +36,16 @@ class GameController private constructor() {
         if (!::networkController.isInitialized) {
             networkController = controller
         }
+    }
+
+    /**
+     * Method to get the message handler
+     */
+    fun getMessageHandler(): MessageHandler? {
+        if (messageHandler == null) {
+            messageHandler = MessageHandler()
+        }
+        return messageHandler
     }
 
     /**
@@ -123,6 +134,13 @@ class GameController private constructor() {
      * Update game state with new data from server
      */
     fun updateGameState(gameData: Map<String, Any>) {
+        // Se il messaggaio è in fase di elaborazione di un'azione di ruolo (RoleActionScreen)
+        // e l'aggiornamento riguarda solo le conferme, ignora l'aggiornamento completo
+        if (messageHandler?.isInRoleAction() == true && isConfirmationOnly(gameData)) {
+            Gdx.app.log("GameController", "Ignoring confirmation-only update during role action phase")
+            return
+        }
+
         // Update model with new state from server
         model.updateFromServer(gameData)
 
@@ -132,6 +150,34 @@ class GameController private constructor() {
                 view.updateDisplay()
             }
         }
+    }
+
+    /**
+     * Verifica se l'aggiornamento riguarda solo conferme dei giocatori
+     */
+    private fun isConfirmationOnly(gameData: Map<String, Any>): Boolean {
+        // Controlla la fase corrente
+        val phase = gameData["currentPhase"] as? String
+        if (phase != "NIGHT" && phase != "NIGHT_ACTION") {
+            return false
+        }
+
+        // Controlla se ci sono solo aggiornamenti di "confirmed"
+        val playersMap = gameData["players"] as? Map<String, Any> ?: return false
+
+        for ((_, playerData) in playersMap) {
+            if (playerData is Map<*, *>) {
+                // Se contiene altre proprietà oltre a "confirmed" e "name"
+                if (playerData.size > 2 &&
+                    (playerData.containsKey("isAlive") ||
+                        playerData.containsKey("role") ||
+                        playerData.containsKey("isProtected"))) {
+                    return false
+                }
+            }
+        }
+
+        return true
     }
 
     /**
@@ -238,6 +284,12 @@ class GameController private constructor() {
                 "rolePhase" to rolePhase,
                 "confirmed" to true
             )
+
+            // Segnala che stiamo processando un'azione di ruolo
+            if (messageHandler == null) {
+                messageHandler = MessageHandler()
+            }
+            messageHandler?.setProcessingRoleAction(true)
 
             // Use a dedicated message type to avoid full game updates
             networkController.sendMessage("CONFIRMATION", confirmationData)
