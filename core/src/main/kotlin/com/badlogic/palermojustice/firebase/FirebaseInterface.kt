@@ -22,5 +22,4 @@ interface FirebaseInterface {
 
     fun disconnect()
     fun updatePlayerAttribute(playerId: String, attribute: String, value: Any, callback: (Boolean) -> Unit)
-    fun listenForConfirmations(callback: (List<String>) -> Unit)
 }
