@@ -8,9 +8,12 @@ import android.util.Log;
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
 import com.badlogic.palermojustice.Main;
+import com.badlogic.palermojustice.model.Player;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.FirebaseApp;
+
+import java.util.List;
 
 /** Launches the Android application. */
 public class AndroidLauncher extends AndroidApplication {
@@ -65,7 +68,7 @@ public class AndroidLauncher extends AndroidApplication {
             Log.e(TAG, "onCreate: Failed to initialize Main application", e);
         }
 
-        Log.d(TAG, "onCreate: Application startup complete");
+
     }
 
     @Override

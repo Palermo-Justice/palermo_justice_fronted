@@ -6,6 +6,11 @@ import com.badlogic.palermojustice.controller.MessageType
 import com.badlogic.palermojustice.firebase.FirebaseInterface
 import android.content.Context
 import android.util.Log
+import com.badlogic.palermojustice.model.Ispettore
+import com.badlogic.palermojustice.model.Mafioso
+import com.badlogic.palermojustice.model.Paesano
+import com.badlogic.palermojustice.model.Player
+import com.badlogic.palermojustice.model.Sgarrista
 import com.google.firebase.database.*
 import com.google.firebase.database.database
 import com.google.firebase.Firebase
@@ -244,7 +249,8 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "name" to playerName,
                 "isAlive" to true,
                 "joinedAt" to ServerValue.TIMESTAMP,
-                "confirmed" to false // Make sure it's a boolean false, not a string
+                "confirmed" to false, // Make sure it's a boolean false, not a string
+                "isProtected" to false // Make sure it's a boolean false, not a string
             )
             Log.d(TAG, "connectToRoom: Player object created")
 
@@ -347,6 +353,91 @@ class NetworkController private constructor(private val context: Context) : Fire
             Log.e(TAG, "setPlayerDead: Exception occurred while setting player dead", e)
             callback(false)
         }
+    }
+
+    /**
+     * Sets the 'protected' status of a player in the specified room.
+     *
+     * @param roomId The ID of the room containing the player.
+     * @param playerId The ID of the player whose 'protected' status needs to be updated.
+     * @param isProtected The boolean value to set for the 'protected' status (true or false).
+     * @param callback Callback indicating success or failure of the operation.
+     */
+    override fun setPlayerProtected(roomId: String, playerId: String, isProtected: Boolean, callback: (Boolean) -> Unit) {
+        Log.d(TAG, "setPlayerProtected: Setting player $playerId in room $roomId to protected = $isProtected")
+
+        try {
+            val playerRef = database.child("rooms").child(roomId).child("players").child(playerId).child("protected")
+
+            playerRef.setValue(isProtected)
+                .addOnSuccessListener {
+                    Log.d(TAG, "setPlayerProtected: Player $playerId set to protected = $isProtected successfully")
+                    callback(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "setPlayerProtected: Failed to set player $playerId to protected = $isProtected", e)
+                    callback(false)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "setPlayerProtected: Exception occurred while setting player protected", e)
+            callback(false)
+        }
+    }
+
+    /**
+     * Retrieves all players currently in the specified room.
+     *
+     * @param roomId The ID of the room.
+     * @param callback Callback that will receive a list of Player objects if successful,
+     * or null if there's an error or no players are found.
+     */
+    override fun getAllPlayers(roomId: String, callback: (List<Player>?) -> Unit) {
+        Log.d(TAG, "getAllPlayers: Fetching all players in room $roomId")
+
+        database.child("rooms").child(roomId).child("players")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val playerList = mutableListOf<Player>()
+                    if (snapshot.exists()) {
+                        for (playerSnapshot in snapshot.children) {
+                            try {
+                                val playerId = playerSnapshot.key
+                                val playerData = playerSnapshot.getValue() as? Map<String, Any>
+                                if (playerId != null && playerData != null) {
+                                    val player = Player()
+                                    player.id = playerId
+                                    player.name = playerData["name"] as? String ?: ""
+                                    player.isAlive = playerData["isAlive"] as? Boolean ?: true
+                                    player.isProtected = playerData["protected"] as? Boolean ?: false // Assuming 'protected' exists
+                                    val roleName = playerData["role"] as? String
+                                    player.role = when (roleName) {
+                                        "Mafioso" -> Mafioso() // Assuming these role classes exist
+                                        "Ispettore" -> Ispettore()
+                                        "Sgarrista" -> Sgarrista()
+                                        "Paesano" -> Paesano()
+                                        else -> Paesano() // Default role if not recognized
+                                    }
+                                    playerList.add(player)
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "getAllPlayers: Error parsing player data", e)
+                                callback(null)
+                                return
+                            }
+                        }
+                        Log.d(TAG, "getAllPlayers: Successfully retrieved ${playerList.size} players")
+                        callback(playerList)
+                    } else {
+                        Log.d(TAG, "getAllPlayers: No players found in room $roomId")
+                        callback(emptyList()) // Return an empty list if no players
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "getAllPlayers: Database error while fetching players", error.toException())
+                    callback(null)
+                }
+            })
     }
 
     override fun sendMessage(messageType: String, data: Map<String, Any>) {
