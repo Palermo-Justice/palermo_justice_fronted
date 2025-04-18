@@ -28,7 +28,7 @@ class MessageHandler {
     // callback datastructure
     private val callbacks = ConcurrentHashMap<MessageType, MutableList<(GameMessage) -> Unit>>()
 
-    // Flag per prevenire aggiornamenti di stato durante la fase di azione dei ruoli
+    // Flag to prevent state updates during role action phase
     private var processingRoleAction = false
 
     fun encodeMessage(type: MessageType, payload: Any): ByteArray {
@@ -50,14 +50,14 @@ class MessageHandler {
                 try {
                     println("Handling GAME_STATE_UPDATE. Payload: ${message.payload}")
 
-                    // Se siamo in fase di azione dei ruoli e questo è un aggiornamento di stato
-                    // che include solo le conferme, gestiamo diversamente
+                    // If we're in role action phase and this is only a confirmation update
+                    // handle it differently
                     if (processingRoleAction && isRoleConfirmationUpdate(message.payload)) {
                         println("Detected role confirmation update, handling separately")
-                        // Aggiorna solo le conferme senza riavviare l'intera schermata
+                        // Update only confirmations without restarting the entire screen
                         handleRoleConfirmationsOnly(message.payload)
 
-                        // Notifica solo i callback di tipo CONFIRMATION invece di tutti i GAME_STATE_UPDATE
+                        // Notify only CONFIRMATION callbacks instead of all GAME_STATE_UPDATE
                         callbacks[MessageType.CONFIRMATION]?.forEach { callback ->
                             try {
                                 callback(GameMessage(MessageType.CONFIRMATION, message.payload))
@@ -66,7 +66,7 @@ class MessageHandler {
                             }
                         }
 
-                        // Non proseguire con l'aggiornamento completo del game state
+                        // Don't proceed with full game state update
                         return
                     }
 
@@ -93,8 +93,24 @@ class MessageHandler {
                     e.printStackTrace()
                 }
             }
+            MessageType.VOTE -> {
+                println("Handling VOTE message. Payload: ${message.payload}")
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    val voteData = message.payload as? Map<String, Any>
+                    if (voteData != null) {
+                        // Process vote data if needed here
+                        println("Vote data processed by MessageHandler")
+
+                        // Notify game controller of vote update if needed
+                        // Generally handled through callbacks instead
+                    }
+                } catch (e: Exception) {
+                    println("Error processing VOTE message: ${e.message}")
+                }
+            }
             MessageType.CONFIRMATION -> {
-                // Gestisce i messaggi di conferma senza scatenare un aggiornamento completo
+                // Handle confirmation messages without triggering full update
                 println("CONFIRMATION message received. Handling player confirmations.")
                 try {
                     @Suppress("UNCHECKED_CAST")
@@ -132,10 +148,6 @@ class MessageHandler {
                 // Basic implementation to avoid exception
                 println("PLAYER_ACTION message received. This is not fully implemented yet.")
             }
-            MessageType.VOTE -> {
-                // Basic implementation to avoid exception
-                println("VOTE message received. This is not fully implemented yet.")
-            }
             MessageType.ROLE_ASSIGNMENT -> {
                 // Basic implementation to avoid exception
                 println("ROLE_ASSIGNMENT message received. This is not fully implemented yet.")
@@ -160,7 +172,7 @@ class MessageHandler {
                                 println("Player $playerId confirmed status updated to $confirmed")
                             }
 
-                            // Non aggiornare l'UI per i singoli aggiornamenti di conferma
+                            // Don't update UI for individual confirmation updates
                             if (!isRoleConfirmationUpdate(updateData)) {
                                 gameController.updateGameState(mapOf("playerUpdated" to playerId))
                             }
@@ -186,25 +198,25 @@ class MessageHandler {
     }
 
     /**
-     * Verifica se l'aggiornamento riguarda solo le conferme durante la fase di azione dei ruoli
+     * Checks if the update only concerns role confirmations
      */
     private fun isRoleConfirmationUpdate(payload: Any): Boolean {
         try {
             @Suppress("UNCHECKED_CAST")
             val data = payload as? Map<String, Any> ?: return false
 
-            // Verifica se è presente il nodo confirmations
+            // Check if confirmations node is present
             if (data.containsKey("confirmations")) {
                 return true
             }
 
-            // Verifica se è un aggiornamento di un singolo giocatore con "confirmed"
+            // Check if it's a single player update with "confirmed"
             if (data.containsKey("playerId") && data.containsKey("updates")) {
                 val updates = data["updates"] as? Map<String, Any> ?: return false
                 return updates.containsKey("confirmed")
             }
 
-            // Verifica se è un aggiornamento completo con "players" che contiene "confirmed"
+            // Check if it's a full update with "players" containing "confirmed"
             if (data.containsKey("players")) {
                 val players = data["players"] as? Map<String, Any> ?: return false
                 for (playerData in players.values) {
@@ -222,18 +234,18 @@ class MessageHandler {
     }
 
     /**
-     * Gestisce solo gli aggiornamenti delle conferme senza riavviare l'intera schermata
+     * Handles only confirmation updates without restarting the entire screen
      */
     private fun handleRoleConfirmationsOnly(payload: Any) {
         try {
             @Suppress("UNCHECKED_CAST")
             val data = payload as? Map<String, Any> ?: return
 
-            // Se contiene il nodo confirmations, aggiorna solo le conferme
+            // If it contains the confirmations node, update only confirmations
             if (data.containsKey("confirmations")) {
                 val confirmations = data["confirmations"] as? Map<String, Boolean> ?: return
 
-                // Aggiorna lo stato confirmed per i giocatori nel modello
+                // Update confirmed status for players in the model
                 for ((playerId, confirmed) in confirmations) {
                     val player = gameController.model.getPlayers().find { it.id == playerId }
                     if (player != null) {
@@ -244,7 +256,7 @@ class MessageHandler {
                 return
             }
 
-            // Se è un aggiornamento completo con "players", estrai solo le conferme
+            // If it's a full update with "players", extract only confirmations
             if (data.containsKey("players")) {
                 val players = data["players"] as? Map<String, Any> ?: return
 
@@ -267,7 +279,7 @@ class MessageHandler {
     }
 
     /**
-     * Imposta il flag per indicare che siamo in fase di azione dei ruoli
+     * Sets the flag to indicate we're in role action phase
      */
     fun setProcessingRoleAction(processing: Boolean) {
         processingRoleAction = processing
@@ -275,7 +287,7 @@ class MessageHandler {
     }
 
     /**
-     * Verifica se siamo in fase di azione dei ruoli
+     * Checks if we're in role action phase
      */
     fun isInRoleAction(): Boolean {
         return processingRoleAction

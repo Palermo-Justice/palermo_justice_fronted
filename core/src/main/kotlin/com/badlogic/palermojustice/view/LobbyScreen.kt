@@ -73,7 +73,7 @@ class LobbyScreen(
         }
     }
 
-    private fun setupTestPlayers() {
+    private fun setupTestPlayers() { // TODO: Remove this function at the end
         // Add test players to the local list for UI
         testPlayersList.clear()
         testPlayersList.add(playerName) // Current player
