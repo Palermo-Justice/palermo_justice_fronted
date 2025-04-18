@@ -324,7 +324,6 @@ class GameScreen(
                     val nightActionButton = TextButton("Perform Night Action", skin)
                     nightActionButton.addListener(object : ChangeListener() {
                         override fun changed(event: ChangeEvent, actor: Actor) {
-                            // Impostiamo il flag per indicare che siamo in fase di azione notturna
                             isInNightActionPhase = true
                             Main.instance.setScreen(RoleActionScreen(currentPlayer!!))
                         }

@@ -88,6 +88,10 @@
       font: font
       fontColor: black,
     }
+    error: {
+      font: font
+      fontColor: black,
+    }
     narration: {
       font: font
       fontColor: black
