@@ -493,15 +493,17 @@ class NetworkController private constructor(private val context: Context) : Fire
                                 val voterId = data?.get("voterId") as? String
                                 val targetId = data?.get("targetId") as? String
                                 val voteType = data?.get("voteType") as? String ?: "default"
+                                val round = data?.get("round") as? Int ?: 1
 
                                 if (voterId != null && targetId != null) {
-                                    // Update the votes node
-                                    roomReference?.child("votes")?.child(voteType)?.child(voterId)
+                                    // Update the votes node with round structure
+                                    roomReference?.child("votes")?.child(voteType)
+                                        ?.child(round.toString())?.child(voterId)
                                         ?.setValue(targetId)
                                         ?.addOnSuccessListener {
                                             Log.d(
                                                 TAG,
-                                                "startMessagesListener.onChildAdded: Vote recorded for player $voterId targeting $targetId"
+                                                "startMessagesListener.onChildAdded: Vote recorded for player $voterId targeting $targetId in round $round"
                                             )
                                         }
                                 }
@@ -672,14 +674,15 @@ class NetworkController private constructor(private val context: Context) : Fire
 
     /**
      * Sends a vote for a player. The vote is identified by the voter's ID, the target player's ID,
-     * and optionally the vote type (for different kinds of votes).
+     * and optionally the vote type and round.
      *
      * @param targetPlayerId The ID of the player being voted for
+     * @param round The voting round number
      * @param voteType Optional type of vote (default, daytime, werewolf, etc.)
      * @param callback Callback with success status
      */
-    override fun sendVote(targetPlayerId: String, voteType: String, callback: (Boolean) -> Unit) {
-        Log.d(TAG, "sendVote: Player $playerId is voting for $targetPlayerId (type: $voteType)")
+    override fun sendVote(targetPlayerId: String, round: Int, voteType: String, callback: (Boolean) -> Unit) {
+        Log.d(TAG, "sendVote: Player $playerId is voting for $targetPlayerId (type: $voteType, round: $round)")
 
         if (playerId == null) {
             Log.e(TAG, "sendVote: Cannot vote without a player ID")
@@ -693,6 +696,7 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "voterId" to playerId!!,
                 "targetId" to targetPlayerId,
                 "voteType" to voteType,
+                "round" to round,
                 "timestamp" to ServerValue.TIMESTAMP
             )
 
@@ -707,15 +711,16 @@ class NetworkController private constructor(private val context: Context) : Fire
     }
 
     /**
-     * Gets the current vote tally for a specific vote type
+     * Gets the vote count for a specific vote type and round
      *
-     * @param voteType The type of vote to tally
+     * @param round The round number to count votes for
+     * @param voteType The type of vote to count
      * @param callback Callback with the vote results map (targetId -> count)
      */
-    override fun getVoteTally(voteType: String, callback: (Map<String, Int>) -> Unit) {
-        Log.d(TAG, "getVoteTally: Getting vote tally for $voteType")
+    override fun countVotes(round: Int, voteType: String, callback: (Map<String, Int>) -> Unit) {
+        Log.d(TAG, "countVotes: Getting vote count for $voteType in round $round")
 
-        roomReference?.child("votes")?.child(voteType)
+        roomReference?.child("votes")?.child(voteType)?.child(round.toString())
             ?.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     try {
@@ -727,65 +732,58 @@ class NetworkController private constructor(private val context: Context) : Fire
                             voteTally[targetId] = (voteTally[targetId] ?: 0) + 1
                         }
 
-                        Log.d(TAG, "getVoteTally: Tallied ${voteTally.size} targets with votes")
+                        Log.d(TAG, "countVotes: Tallied ${voteTally.size} targets with votes")
                         callback(voteTally)
                     } catch (e: Exception) {
-                        Log.e(TAG, "getVoteTally: Error tallying votes", e)
+                        Log.e(TAG, "countVotes: Error tallying votes", e)
                         callback(emptyMap())
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    Log.e(TAG, "getVoteTally: Database error", error.toException())
+                    Log.e(TAG, "countVotes: Database error", error.toException())
                     callback(emptyMap())
                 }
             })
     }
 
     /**
-     * Clears all votes of a specific type
-     *
-     * @param voteType The type of votes to clear
-     * @param callback Callback with success status
-     */
-    override fun clearVotes(voteType: String, callback: (Boolean) -> Unit) {
-        Log.d(TAG, "clearVotes: Clearing votes of type $voteType")
-
-        roomReference?.child("votes")?.child(voteType)?.setValue(null)
-            ?.addOnSuccessListener {
-                Log.d(TAG, "clearVotes: Successfully cleared votes")
-                callback(true)
-            }
-            ?.addOnFailureListener { e ->
-                Log.e(TAG, "clearVotes: Failed to clear votes", e)
-                callback(false)
-            }
-    }
-
-    /**
      * Registers a callback for vote updates
      *
+     * @param round The round number to listen for
      * @param voteType The type of vote to listen for
      * @param callback Callback that will be called with the updated votes map
      */
-    override fun listenForVotes(voteType: String, callback: (Map<String, String>) -> Unit) {
-        Log.d(TAG, "listenForVotes: Setting up listener for vote type $voteType")
+    override fun listenForVotes(round: Int, voteType: String, callback: (Map<String, String>) -> Unit) {
+        Log.d(TAG, "listenForVotes: Setting up listener for vote type $voteType, round $round")
 
-        messageHandler.registerCallback(MessageType.VOTE) { message ->
-            try {
-                @Suppress("UNCHECKED_CAST")
-                val votesData = message.payload as? Map<String, Any> ?: return@registerCallback
+        val voteReference = roomReference?.child("votes")?.child(voteType)?.child(round.toString())
 
-                // Check if this vote type exists in the data
-                if (votesData.containsKey(voteType)) {
-                    val typeVotes =
-                        votesData[voteType] as? Map<String, String> ?: return@registerCallback
-                    callback(typeVotes)
+        voteReference?.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    val votesMap = mutableMapOf<String, String>()
+
+                    for (voteSnapshot in snapshot.children) {
+                        val voterId = voteSnapshot.key ?: continue
+                        val targetId = voteSnapshot.getValue(String::class.java) ?: continue
+                        votesMap[voterId] = targetId
+                    }
+
+                    callback(votesMap)
+                    Log.d(TAG, "listenForVotes: Votes update received for round $round, vote type $voteType")
+                } catch (e: Exception) {
+                    Log.e(TAG, "listenForVotes: Error processing vote update", e)
+                    callback(emptyMap())
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "listenForVotes: Error processing vote update", e)
             }
-        }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "listenForVotes: Database error", error.toException())
+                callback(emptyMap())
+            }
+        })
     }
 
     override fun disconnect() {
