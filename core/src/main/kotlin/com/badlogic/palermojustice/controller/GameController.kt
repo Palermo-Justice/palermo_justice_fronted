@@ -198,6 +198,7 @@ class GameController private constructor() {
      */
     fun vote(targetPlayerId: String) {
         // Send vote to server
+        Gdx.app.log("GameController", "::networkcontroller.isInitialized: ${::networkController.isInitialized}")
         if (::networkController.isInitialized) {
             val voteData = mapOf(
                 "type" to "VOTE",
