@@ -210,7 +210,7 @@ class GameScreen(
 
         if (!isAlive) {
             statusLabel.setText("You are DEAD")
-            statusLabel.style = skin.get("error", Label.LabelStyle::class.java)
+            statusLabel.style = skin.get("default", Label.LabelStyle::class.java)
         } else {
             statusLabel.setText("You are ALIVE")
             statusLabel.style = skin.get("default", Label.LabelStyle::class.java)
