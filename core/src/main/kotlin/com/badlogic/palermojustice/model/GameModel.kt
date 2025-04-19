@@ -138,9 +138,9 @@ class GameModel {
         // Always have at least one Mafioso
         roleList.add(Mafioso())
         roleList.add(Ispettore())
-        roleList.add(Sgarrista())
+        roleList.add(Paesano())
 
-        // Fill remaining slots with Paesani
+        // Fill remaining slots with Paesanos
         while (roleList.size < players.size) {
             roleList.add(Paesano())
         }

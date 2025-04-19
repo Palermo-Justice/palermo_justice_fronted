@@ -57,6 +57,7 @@ class VotingScreen(private val currentPlayer: Player) : Screen {
 
         // Get living players from GameModel through GameController
         val livingPlayers = gameController.model.getLivingPlayers()
+            .filter { it.id != currentPlayer.id } // Filter out the current player
 
         if (livingPlayers.isEmpty()) {
             mainTable.add(Label("No living players to vote for!", skin, "big")).padBottom(20f).row()
@@ -211,6 +212,8 @@ class VotingScreen(private val currentPlayer: Player) : Screen {
                 if (autoVoteTimer >= autoVoteDelay) {
                     // Auto vote for a random player
                     val livingPlayers = gameController.model.getLivingPlayers()
+                        .filter { it.id != currentPlayer.id } // Filter out current player
+
                     if (livingPlayers.isNotEmpty()) {
                         // Choose a mafia player to vote for if possible (to advance the game)
                         val targetPlayer = livingPlayers.find { it.role?.name == "Mafioso" } ?: livingPlayers.first()

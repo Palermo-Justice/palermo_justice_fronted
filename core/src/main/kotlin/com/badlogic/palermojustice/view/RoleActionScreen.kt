@@ -31,6 +31,8 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private val confirmedPlayers = mutableSetOf<String>()
     private lateinit var confirmCountLabel: Label
     var announcementText: String? = null
+    private val playersToConfirm = mutableListOf<String>()
+    private var pendingKilledPlayerId: String? = null
 
     // Store the selected player ID
     private var selectedPlayerId: String? = null
@@ -74,6 +76,10 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     override fun show() {
         // Set this as the active instance
         activeInstance = this
+
+        gameController.model.getLivingPlayers().forEach { player ->
+            playersToConfirm.add(player.id)
+        }
 
         stage = Stage(ScreenViewport())
         Gdx.input.inputProcessor = stage
@@ -120,14 +126,14 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
      * Check if all players have confirmed and if so, start the transition
      */
     private fun checkIfAllPlayersConfirmed() {
-        val livingPlayers = gameController.model.getLivingPlayers()
         var allConfirmed = true
 
         // Update the list of confirmed players
         confirmedPlayers.clear()
 
-        livingPlayers.forEach { player ->
-            if (player.confirmed) {
+        for (playerId in playersToConfirm) {
+            val player = gameController.model.getPlayers().find { it.id == playerId }
+            if (player != null && player.confirmed) {
                 confirmedPlayers.add(player.id)
             } else {
                 allConfirmed = false
@@ -136,11 +142,11 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
 
         // Update the counter text
         if (::confirmCountLabel.isInitialized) {
-            confirmCountLabel.setText("${confirmedPlayers.size} / ${livingPlayers.size} players confirmed")
+            confirmCountLabel.setText("${confirmedPlayers.size} / ${playersToConfirm.size} players confirmed")
         }
 
         // If all have confirmed, proceed to the next screen
-        if (allConfirmed && livingPlayers.isNotEmpty()) {
+        if (allConfirmed && playersToConfirm.isNotEmpty()) {
             Gdx.app.log("RoleActionScreen", "All players already confirmed, should proceed to next screen")
             shouldAutoProceed = true
         }
@@ -150,6 +156,8 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         val mainTable = Table()
         mainTable.setFillParent(true)
         stage.addActor(mainTable)
+
+        confirmCountLabel = Label("${confirmedPlayers.size} / ${playersToConfirm.size} players confirmed", skin, "big")
 
         // Determine which role UI to show based on the current player's role
         val playerRole = currentPlayer.role
@@ -293,16 +301,15 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private fun updateConfirmedPlayersFromModel() {
         confirmedPlayers.clear()
 
-        // Add all living players who have already confirmed
-        gameController.model.getLivingPlayers()
-            .filter { it.confirmed }
-            .forEach { player ->
+
+        for (playerId in playersToConfirm) {
+            val player = gameController.model.getPlayers().find { it.id == playerId }
+            if (player != null && player.confirmed) {
                 confirmedPlayers.add(player.id)
             }
+        }
 
-        // If all players have confirmed, set the flag to proceed
-        val livingPlayers = gameController.model.getLivingPlayers()
-        if (confirmedPlayers.size >= livingPlayers.size && livingPlayers.isNotEmpty()) {
+        if (confirmedPlayers.size >= playersToConfirm.size && playersToConfirm.isNotEmpty()) {
             shouldAutoProceed = true
         }
     }
@@ -362,9 +369,17 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     private fun processMafiosoAction(mafioso: Player, target: Player) {
         if (!target.isAlive) return
 
-        // Process Mafioso's killing action
+        pendingKilledPlayerId = target.id
+
         val result = GameStateHelper.processNightAction(mafioso, target)
 
+        if (result != null) {
+            nightActionsResults.add(result)
+        }
+
+        Gdx.app.log("RoleActionScreen", "Mafioso action result: $result")
+
+        // Process Mafioso's killing action
         // Add result to night actions results
         if (result != null) {
             nightActionsResults.add(result)
@@ -383,7 +398,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
                 if (updateSuccess) {
                     Gdx.app.log("RoleActionScreen", "Successfully killed player ${target.name}")
 
-                    // Also update local model
+                    // Aggiorniamo lo stato localmente, ma non rimuoviamo dalla lista di chi deve confermare
                     target.isAlive = false
                 } else {
                     Gdx.app.log("RoleActionScreen", "Failed to kill player ${target.name}")
@@ -396,6 +411,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
                 nightActionsResults.removeLast()
             }
             nightActionsResults.add("${target.name} was protected!")
+            pendingKilledPlayerId = null // Nessun giocatore è stato ucciso
         }
     }
 
@@ -574,9 +590,8 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
     }
 
     private fun checkAllConfirmsAndProceed() {
-        val livingPlayers = gameController.model.getLivingPlayers()
-        val allConfirmed = confirmedPlayers.size >= livingPlayers.size
-        Gdx.app.log("RoleActionScreen", "Check all confirms: ${confirmedPlayers.size}/${livingPlayers.size} confirmed, all confirmed? $allConfirmed")
+        val allConfirmed = confirmedPlayers.size >= playersToConfirm.size
+        Gdx.app.log("RoleActionScreen", "Check all confirms: ${confirmedPlayers.size}/${playersToConfirm.size} confirmed, all confirmed? $allConfirmed")
 
         if (allConfirmed) {
             shouldAutoProceed = true
