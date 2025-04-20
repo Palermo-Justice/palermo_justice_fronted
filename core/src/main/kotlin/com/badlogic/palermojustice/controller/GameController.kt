@@ -69,7 +69,9 @@ class GameController private constructor() {
                 "role" to (player.role?.name ?: "Paesano"),
                 "isAlive" to player.isAlive,
                 "isProtected" to player.isProtected,
-                "confirmed" to false  // Initialize confirmed to false for all players
+                "confirmed" to false,
+                "voted" to false,
+                "isVoted" to false
             )
         }
 
@@ -194,22 +196,6 @@ class GameController private constructor() {
     }
 
     /**
-     * Send a vote for a player
-     */
-    fun vote(targetPlayerId: String) {
-        // Send vote to server
-        if (::networkController.isInitialized) {
-            val voteData = mapOf(
-                "type" to "VOTE",
-                "targetId" to targetPlayerId,
-                "voterId" to model.currentPlayerId
-            )
-
-            networkController.sendMessage("VOTE", voteData)
-        }
-    }
-
-    /**
      * Perform a role-specific action
      */
     fun performRoleAction(actionType: String, targetId: String) {
@@ -223,6 +209,30 @@ class GameController private constructor() {
             )
 
             networkController.sendMessage("PLAYER_ACTION", actionData)
+        }
+    }
+
+    fun countAndProcessVotes() {
+        if (!::networkController.isInitialized) {
+            Gdx.app.error("GameController", "Network controller not initialized")
+            return
+        }
+
+        Gdx.app.log("GameController", "Starting to count and process votes")
+
+        networkController.listenForVotes { votesMap ->
+            Gdx.app.log("GameController", "Received votes: ${votesMap.size}")
+
+            if (votesMap.isEmpty()) {
+                Gdx.app.log("GameController", "No votes received, skipping")
+                return@listenForVotes
+            }
+
+            Gdx.app.postRunnable {
+                processVotes(votesMap) { eliminatedPlayer, isTie ->
+                    Gdx.app.log("GameController", "Vote result: eliminatedPlayer=${eliminatedPlayer?.name}, isTie=$isTie")
+                }
+            }
         }
     }
 
@@ -317,5 +327,136 @@ class GameController private constructor() {
                 "players" to resetData
             ))
         }
+    }
+
+    /**
+     * Send a vote for a player
+     * @param targetPlayerId ID of the player being voted for, or null to skip voting
+     */
+    fun vote(targetPlayerId: String?) {
+        if (!::networkController.isInitialized) {
+            Gdx.app.error("GameController", "Network controller not initialized")
+            return
+        }
+
+        Gdx.app.log("GameController", "Sending vote from ${model.currentPlayerId} for $targetPlayerId")
+
+        // Update local model with the vote
+        model.registerVote(model.currentPlayerId, targetPlayerId)
+
+        // Register the vote in Firebase
+        networkController.registerVote(model.currentPlayerId, targetPlayerId) { success ->
+            if (success) {
+                Gdx.app.log("GameController", "Vote registered successfully")
+            } else {
+                Gdx.app.error("GameController", "Failed to register vote")
+            }
+        }
+
+        // For backward compatibility, also send a message of type VOTE
+        val voteData = mapOf(
+            "type" to "VOTE",
+            "targetId" to (targetPlayerId ?: "null"), // Convert null to string "null" for the message
+            "voterId" to model.currentPlayerId
+        )
+
+        networkController.sendMessage("VOTE", voteData)
+    }
+
+    fun listenForVotes(callback: (Player?, Boolean) -> Unit) {
+        if (!::networkController.isInitialized) {
+            Gdx.app.error("GameController", "Network controller not initialized")
+            return
+        }
+
+        Gdx.app.log("GameController", "Starting to listen for votes")
+
+        networkController.listenForVotes { votesMap ->
+            Gdx.app.postRunnable {
+                processVotes(votesMap, callback)
+            }
+        }
+    }
+
+    private fun processVotes(votesMap: Map<String, String?>, callback: (Player?, Boolean) -> Unit) {
+        val livingPlayers = model.getLivingPlayers()
+
+        Gdx.app.log("GameController", "Processing votes: ${votesMap.size} votes, ${livingPlayers.size} living players")
+
+        val allVoted = livingPlayers.all { player ->
+            votesMap.containsKey(player.id) || !player.isAlive
+        }
+
+        if (!allVoted) {
+            Gdx.app.log("GameController", "Not all living players have voted yet")
+            return
+        }
+
+        Gdx.app.log("GameController", "All living players have voted, counting votes")
+
+        val voteCounts = mutableMapOf<String, Int>()
+
+        votesMap.forEach { (_, targetId) ->
+            if (targetId != null) {
+                val currentCount = voteCounts[targetId] ?: 0
+                voteCounts[targetId] = currentCount + 1
+            }
+        }
+
+        if (voteCounts.isEmpty()) {
+            Gdx.app.log("GameController", "No votes cast, no player will be eliminated")
+            callback(null, false)
+            return
+        }
+
+        val maxVotes = voteCounts.maxByOrNull { it.value }?.value ?: 0
+
+        val playersWithMaxVotes = voteCounts.filter { it.value == maxVotes }.keys
+
+        if (playersWithMaxVotes.size > 1) {
+            Gdx.app.log("GameController", "Tie between ${playersWithMaxVotes.size} players, no player will be eliminated")
+            callback(null, true)
+        } else {
+            val targetPlayerId = playersWithMaxVotes.first()
+            val targetPlayer = model.getPlayers().find { it.id == targetPlayerId }
+
+            if (targetPlayer != null) {
+                Gdx.app.log("GameController", "Player ${targetPlayer.name} received the most votes: $maxVotes")
+
+                targetPlayer.isAlive = false
+
+                networkController.updatePlayerAttribute(targetPlayer.id, "isAlive", false) { success ->
+                    if (success) {
+                        Gdx.app.log("GameController", "Player ${targetPlayer.name} marked as dead in Firebase")
+                    } else {
+                        Gdx.app.error("GameController", "Failed to update player ${targetPlayer.name} status in Firebase")
+                    }
+                }
+
+                callback(targetPlayer, false)
+            } else {
+                Gdx.app.error("GameController", "Target player not found for ID: $targetPlayerId")
+                callback(null, false)
+            }
+        }
+    }
+
+    fun resetVotes(callback: (Boolean) -> Unit = {}) {
+        if (!::networkController.isInitialized) {
+            Gdx.app.error("GameController", "Network controller not initialized")
+            callback(false)
+            return
+        }
+
+        networkController.resetVotes { success ->
+            if (success) {
+                Gdx.app.log("GameController", "Votes reset successfully")
+            } else {
+                Gdx.app.error("GameController", "Failed to reset votes")
+            }
+            callback(success)
+        }
+
+        model.resetVotes()
     }
 }

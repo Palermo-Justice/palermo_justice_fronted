@@ -121,7 +121,7 @@ class DeathScreen(private val player: Player) : Screen {
     }
 
     override fun render(delta: Float) {
-        Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1f) // Dark background for death screen
+        Gdx.gl.glClearColor(0.95f, 0.95f, 0.95f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
         // Increment elapsed time

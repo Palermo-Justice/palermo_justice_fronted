@@ -14,4 +14,7 @@ interface FirebaseInterface {
     fun listenForConfirmations(callback: (List<String>) -> Unit)
     fun disconnect()
     fun updatePlayerAttribute(playerId: String, attribute: String, value: Any, callback: (Boolean) -> Unit = {})
+    fun registerVote(voterId: String, targetId: String?, callback: (Boolean) -> Unit)
+    fun listenForVotes(callback: (Map<String, String?>) -> Unit)
+    fun resetVotes(callback: (Boolean) -> Unit)
 }

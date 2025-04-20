@@ -25,6 +25,8 @@ class Player {
     var isAlive: Boolean = true
     var isProtected: Boolean = false
     var confirmed: Boolean = false
+    var voted: Boolean = false
+    var isVoted: Int = 0
 
     constructor()
 
@@ -41,6 +43,7 @@ class Player {
 
 class GameModel {
     // Attributes - main source of truth for players
+    private val votes = mutableMapOf<String, String?>()
     private val players: MutableList<Player> = ArrayList()
     private var currentPhase: GamePhase = GamePhase.LOBBY
     private var gameStatus: GameStatus = GameStatus.WAITING
@@ -49,6 +52,55 @@ class GameModel {
     var roomId: String = ""
     var currentPlayerRole: Role? = null
     var currentPlayerId: String = ""
+
+    fun registerVote(voterId: String, targetId: String?) {
+        votes[voterId] = targetId
+    }
+
+    fun getVotes(): Map<String, String?> {
+        return votes.toMap()
+    }
+
+    fun haveAllVoted(): Boolean {
+        val livingPlayers = getLivingPlayers()
+        return livingPlayers.all { votes.containsKey(it.id) }
+    }
+
+    fun resetVotes() {
+        votes.clear()
+    }
+
+    fun countVotes(): Pair<Player?, Boolean> {
+        val voteCounts = mutableMapOf<String, Int>()
+
+        votes.forEach { (_, targetId) ->
+            if (targetId != null) {
+                val currentCount = voteCounts[targetId] ?: 0
+                voteCounts[targetId] = currentCount + 1
+            }
+        }
+
+        if (voteCounts.isEmpty()) {
+            return Pair(null, false)
+        }
+
+        val maxVotes = voteCounts.maxByOrNull { it.value }?.value ?: 0
+
+        val playersWithMaxVotes = voteCounts.filter { it.value == maxVotes }.keys
+
+        if (playersWithMaxVotes.size > 1) {
+            return Pair(null, true)
+        } else {
+            val targetPlayerId = playersWithMaxVotes.first()
+            val targetPlayer = getPlayers().find { it.id == targetPlayerId }
+
+            return Pair(targetPlayer, false)
+        }
+    }
+
+    fun getPlayerVote(playerId: String): String? {
+        return votes[playerId]
+    }
 
     // Player management methods
     fun getPlayers(): List<Player> {

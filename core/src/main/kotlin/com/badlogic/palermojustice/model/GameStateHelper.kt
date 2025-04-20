@@ -83,11 +83,10 @@ object GameStateHelper {
         if (actingPlayer.role == null) {
             return ""
         }
-
-        // Let the role handle the action
-        return actingPlayer.role!!.performAction(
+    val result = actingPlayer.role!!.performAction(
             GameController.getInstance().model.getPlayers(),
             targetPlayer
         )
+        return result
     }
 }

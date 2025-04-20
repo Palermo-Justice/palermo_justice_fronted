@@ -220,8 +220,10 @@ class NetworkController private constructor(private val context: Context) : Fire
                 "name" to playerName,
                 "isAlive" to true,
                 "joinedAt" to ServerValue.TIMESTAMP,
-                "confirmed" to false, // Make sure it's a boolean false, not a string
-                "isProtected" to false // Make sure it's a boolean false, not a string
+                "confirmed" to false,
+                "voted" to false,
+                "isVoted" to 0,
+                "isProtected" to false
             )
             Log.d(TAG, "connectToRoom: Player object created")
 
@@ -668,6 +670,183 @@ class NetworkController private constructor(private val context: Context) : Fire
                 callback(emptyList())
             }
         })
+    }
+
+    override fun registerVote(voterId: String, targetId: String?, callback: (Boolean) -> Unit) {
+        Log.d(TAG, "registerVote: Registering vote from player $voterId for player $targetId")
+
+        try {
+            if (roomReference == null) {
+                Log.e(TAG, "registerVote: Room reference is null")
+                callback(false)
+                return
+            }
+
+            roomReference?.child("players")?.child(voterId)?.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!snapshot.exists() || !snapshot.child("name").exists()) {
+                        Log.e(TAG, "registerVote: Invalid player ID: $voterId")
+                        callback(false)
+                        return
+                    }
+
+                    roomReference?.child("players")?.child(voterId)?.child("voted")?.setValue(true)
+                        ?.addOnSuccessListener {
+                            Log.d(TAG, "registerVote: Player marked as voted")
+
+                            roomReference?.child("votes")?.child(voterId)?.setValue(targetId)
+                                ?.addOnSuccessListener {
+                                    Log.d(TAG, "registerVote: Vote registered successfully")
+                                    callback(true)
+                                }
+                                ?.addOnFailureListener { e ->
+                                    Log.e(TAG, "registerVote: Failed to register vote", e)
+                                    callback(false)
+                                }
+                        }
+                        ?.addOnFailureListener { e ->
+                            Log.e(TAG, "registerVote: Failed to mark player as voted", e)
+                            callback(false)
+                        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "registerVote: Failed to check player validity", error.toException())
+                    callback(false)
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "registerVote: Exception occurred", e)
+            callback(false)
+        }
+    }
+
+    override fun listenForVotes(callback: (Map<String, String?>) -> Unit) {
+        Log.d(TAG, "listenForVotes: Setting up vote listener")
+
+        try {
+            if (roomReference == null) {
+                Log.e(TAG, "listenForVotes: Room reference is null")
+                return
+            }
+
+            val playersListener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    Log.d(TAG, "listenForVotes.onDataChange: Players updated")
+
+                    val votedPlayers = mutableSetOf<String>()
+                    val playersVotes = mutableMapOf<String, String?>()
+
+                    for (playerSnapshot in snapshot.children) {
+                        val playerId = playerSnapshot.key ?: continue
+
+                        val isAlive = playerSnapshot.child("isAlive").getValue(Boolean::class.java) ?: true
+                        val hasVoted = playerSnapshot.child("voted").getValue(Boolean::class.java) ?: false
+
+                        if (isAlive && hasVoted) {
+                            votedPlayers.add(playerId)
+                        }
+                    }
+
+                    roomReference?.child("votes")?.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(votesSnapshot: DataSnapshot) {
+                            for (voteSnapshot in votesSnapshot.children) {
+                                val voterId = voteSnapshot.key
+                                val targetId = voteSnapshot.getValue(String::class.java)
+
+                                if (voterId != null && votedPlayers.contains(voterId)) {
+                                    playersVotes[voterId] = targetId
+                                }
+                            }
+
+                            callback(playersVotes)
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e(TAG, "Error getting votes", error.toException())
+                            callback(emptyMap())
+                        }
+                    })
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "listenForVotes.onCancelled: Error listening for players", error.toException())
+                    callback(emptyMap())
+                }
+            }
+
+            roomReference?.child("players")?.addValueEventListener(playersListener)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "listenForVotes: Exception occurred", e)
+        }
+    }
+
+    override fun resetVotes(callback: (Boolean) -> Unit) {
+        Log.d(TAG, "resetVotes: Resetting all votes")
+
+        try {
+            if (roomReference == null) {
+                Log.e(TAG, "resetVotes: Room reference is null")
+                callback(false)
+                return
+            }
+
+            roomReference?.child("votes")?.removeValue()
+                ?.addOnSuccessListener {
+                    Log.d(TAG, "resetVotes: Votes node reset successfully")
+
+                    val playersRef = roomReference?.child("players")
+
+                    playersRef?.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            var completedUpdates = 0
+                            var validPlayers = 0
+
+                            for (playerSnapshot in snapshot.children) {
+                                val hasName = playerSnapshot.child("name").exists()
+                                if (hasName) validPlayers++
+                            }
+
+                            if (validPlayers == 0) {
+                                callback(true)
+                                return
+                            }
+
+                            for (playerSnapshot in snapshot.children) {
+                                val playerId = playerSnapshot.key
+                                if (playerId != null) {
+                                    val hasName = playerSnapshot.child("name").exists()
+                                    if (hasName) {
+                                        playersRef.child(playerId).child("voted").setValue(false)
+                                            .addOnCompleteListener {
+                                                completedUpdates++
+                                                if (completedUpdates >= validPlayers) {
+                                                    callback(true)
+                                                }
+                                            }
+                                    } else {
+                                        Log.d(TAG, "resetVotes: Removing invalid player: $playerId")
+                                        playersRef.child(playerId).removeValue()
+                                    }
+                                }
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e(TAG, "resetVotes: Failed to reset player voted status", error.toException())
+                            callback(false)
+                        }
+                    })
+                }
+                ?.addOnFailureListener { e ->
+                    Log.e(TAG, "resetVotes: Failed to reset votes", e)
+                    callback(false)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "resetVotes: Exception occurred", e)
+            callback(false)
+        }
     }
 
     // Data class for Firebase messages

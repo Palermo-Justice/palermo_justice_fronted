@@ -398,7 +398,6 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
                 if (updateSuccess) {
                     Gdx.app.log("RoleActionScreen", "Successfully killed player ${target.name}")
 
-                    // Aggiorniamo lo stato localmente, ma non rimuoviamo dalla lista di chi deve confermare
                     target.isAlive = false
                 } else {
                     Gdx.app.log("RoleActionScreen", "Failed to kill player ${target.name}")
@@ -411,12 +410,11 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
                 nightActionsResults.removeLast()
             }
             nightActionsResults.add("${target.name} was protected!")
-            pendingKilledPlayerId = null // Nessun giocatore è stato ucciso
+            pendingKilledPlayerId = null
         }
     }
 
     private fun processIspettoreAction(ispettore: Player, target: Player) {
-        // For Inspector role
         val result = GameStateHelper.processNightAction(ispettore, target)
         if (result != null) {
             Gdx.app.log("RoleActionScreen", "Ispettore result: $result")
@@ -428,6 +426,7 @@ class RoleActionScreen(private val currentPlayer: Player) : Screen {
         }
     }
 
+    //Available in V2 :)
     private fun processSgarristaAction(sgarrista: Player, target: Player) {
         // For Sgarrista (Protector) role
         val result = GameStateHelper.processNightAction(sgarrista, target)
